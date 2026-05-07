@@ -246,4 +246,8 @@ export const t = {
     submitCtaIncomplete: '請完成所有題目',
     finishing: '正在打造您的地圖…',
   },
+  generation: {
+    disclaimer: '這可能需要 1–2 分鐘，請勿離開此頁面。',
+    enteringDashboard: '正在進入您的主頁…',
+  },
 };

@@ -6,6 +6,7 @@ import { ArrowRight, Flame } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useT, useLocale } from '@/lib/i18n/client';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { RoadmapGenerationLoader } from '@/components/questionnaire/RoadmapGenerationLoader';
 import { cn } from '@/lib/utils';
 import {
   QUESTIONS,
@@ -41,15 +42,20 @@ export function QuestionnaireClient() {
     setAnswers((prev) => ({ ...prev, [qId]: optionIdx }));
   };
 
-  const submit = async () => {
+  const submit = () => {
     if (!allAnswered || submitting) return;
     setSubmitting(true);
     setSubmitError(null);
+    // From here the RoadmapGenerationLoader takes over the screen
+    // and runs persistRoadmap() in the background.
+  };
 
+  /** The actual DB work — invoked by the loader's onFinish. */
+  const persistRoadmap = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       router.replace('/login');
-      return;
+      throw new Error('Not authenticated');
     }
 
     const derived = deriveDimensions(answers);
@@ -67,13 +73,8 @@ export function QuestionnaireClient() {
         onboarding_completed: true,
       })
       .eq('id', user.id);
-    if (pErr) {
-      setSubmitError(pErr.message);
-      setSubmitting(false);
-      return;
-    }
+    if (pErr) throw new Error(pErr.message);
 
-    // Generate roadmap if user_tasks empty
     const { count } = await supabase
       .from('user_tasks')
       .select('id', { head: true, count: 'exact' })
@@ -92,33 +93,26 @@ export function QuestionnaireClient() {
         }))
       );
       const { error: tErr } = await supabase.from('user_tasks').insert(taskRows);
-      if (tErr) {
-        setSubmitError(tErr.message);
-        setSubmitting(false);
-        return;
-      }
+      if (tErr) throw new Error(tErr.message);
     }
+  };
 
+  const onLoaderComplete = () => {
     router.push('/dashboard');
     router.refresh();
   };
 
-  // Submitting state — full-page spinner
+  // Submitting state — theatrical roadmap-generation loader
   if (submitting) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
-        <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-accent/10 blur-[140px]" />
-        </div>
-        <div className="relative">
-          <Flame className="h-7 w-7 text-accent/60 absolute inset-0 m-auto" strokeWidth={2.5} />
-          <div className="h-16 w-16 rounded-full border-4 border-accent/30 border-t-accent animate-spin" />
-        </div>
-        <p className="mt-6 text-ink-muted">{t.questionnaire.finishing}</p>
-        {submitError && (
-          <p className="mt-3 text-xs text-danger max-w-sm">{submitError}</p>
-        )}
-      </div>
+      <RoadmapGenerationLoader
+        onFinish={persistRoadmap}
+        onComplete={onLoaderComplete}
+        onError={(msg) => {
+          setSubmitError(msg);
+          setSubmitting(false);
+        }}
+      />
     );
   }
 

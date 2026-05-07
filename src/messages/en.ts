@@ -256,4 +256,8 @@ export const t = {
     submitCtaIncomplete: "Answer all questions to continue",
     finishing: "Building your roadmap…",
   },
+  generation: {
+    disclaimer: "This can take 1–2 minutes. Please don't leave this page.",
+    enteringDashboard: "Entering your dashboard…",
+  },
 };
