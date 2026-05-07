@@ -80,17 +80,50 @@ export default async function DashboardPage() {
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8 animate-slide-up flex items-start gap-4">
           {profile.skool_avatar_url && (
-            <img
-              src={profile.skool_avatar_url}
-              alt=""
-              className="h-16 w-16 rounded-full object-cover border-2 border-accent/40"
-            />
+            profile.skool_handle ? (
+              <a
+                href={`https://www.skool.com/@${profile.skool_handle}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Open Skool profile"
+                className="shrink-0"
+              >
+                <img
+                  src={profile.skool_avatar_url}
+                  alt=""
+                  className="h-16 w-16 rounded-full object-cover border-2 border-accent/40 hover:border-accent transition-colors"
+                />
+              </a>
+            ) : (
+              <img
+                src={profile.skool_avatar_url}
+                alt=""
+                className="h-16 w-16 rounded-full object-cover border-2 border-accent/40 shrink-0"
+              />
+            )
           )}
-          <div>
+          <div className="min-w-0">
             <p className="text-sm text-ink-muted">{t.dashboard.greeting}</p>
-            <h1 className="font-display text-4xl md:text-5xl font-bold tracking-tight mt-1">
-              {displayName} <span className="text-accent">.</span>
-            </h1>
+            {profile.skool_handle ? (
+              <a
+                href={`https://www.skool.com/@${profile.skool_handle}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-baseline gap-2 group"
+              >
+                <h1 className="font-display text-4xl md:text-5xl font-bold tracking-tight mt-1 group-hover:text-accent transition-colors">
+                  {displayName} <span className="text-accent">.</span>
+                </h1>
+                <ExternalLink className="h-4 w-4 text-ink-dim group-hover:text-accent transition-colors" />
+              </a>
+            ) : (
+              <h1 className="font-display text-4xl md:text-5xl font-bold tracking-tight mt-1">
+                {displayName} <span className="text-accent">.</span>
+              </h1>
+            )}
+            {profile.skool_handle && (
+              <p className="text-xs text-ink-dim font-mono mt-0.5">@{profile.skool_handle}</p>
+            )}
             <p className="mt-2 text-ink-muted text-sm">
               {t.dashboard.track}: <span className="text-ink">{trackLabel}</span>
             </p>

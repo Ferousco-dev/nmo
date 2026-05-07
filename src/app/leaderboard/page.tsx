@@ -138,42 +138,52 @@ function ActivitySection({
             const rank = idx + 1;
             const isMe = entry.user_id === currentUserId;
             const name = entry.display_name || (entry.skool_handle ? `@${entry.skool_handle}` : '匿名');
+            const skoolUrl = entry.skool_handle ? `https://www.skool.com/@${entry.skool_handle}` : null;
             return (
-              <li
-                key={entry.user_id}
-                className={cn(
-                  'flex items-center gap-3 p-3 rounded-lg border transition-colors',
-                  isMe ? 'border-accent bg-accent/5' : 'border-transparent hover:bg-bg-hover'
-                )}
-              >
-                <RankBadge rank={rank} />
-                {entry.avatar_url ? (
-                  <img src={entry.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover shrink-0" />
-                ) : (
-                  <div className="h-9 w-9 rounded-full bg-bg-hover border border-line flex items-center justify-center text-xs font-mono text-ink-muted shrink-0">
-                    {name.slice(0, 2).toUpperCase()}
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-ink truncate">{name}</span>
-                    {isMe && (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-accent text-white font-bold uppercase tracking-wide">
-                        {t.leaderboard.you}
-                      </span>
+              <li key={entry.user_id}>
+                <a
+                  href={skoolUrl ?? '#'}
+                  target={skoolUrl ? '_blank' : undefined}
+                  rel={skoolUrl ? 'noopener noreferrer' : undefined}
+                  onClick={(e) => { if (!skoolUrl) e.preventDefault(); }}
+                  className={cn(
+                    'flex items-center gap-3 p-3 rounded-lg border transition-colors',
+                    skoolUrl && 'cursor-pointer',
+                    isMe ? 'border-accent bg-accent/5' : 'border-transparent hover:bg-bg-hover'
+                  )}
+                >
+                  <RankBadge rank={rank} />
+                  {entry.avatar_url ? (
+                    <img src={entry.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover shrink-0" />
+                  ) : (
+                    <div className="h-9 w-9 rounded-full bg-bg-hover border border-line flex items-center justify-center text-xs font-mono text-ink-muted shrink-0">
+                      {name.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-ink truncate">{name}</span>
+                      {isMe && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-accent text-white font-bold uppercase tracking-wide">
+                          {t.leaderboard.you}
+                        </span>
+                      )}
+                    </div>
+                    {entry.skool_handle && (
+                      <div className="text-xs text-ink-dim font-mono truncate">@{entry.skool_handle}</div>
                     )}
+                    <div className="flex items-center gap-2 text-xs text-ink-dim flex-wrap mt-0.5">
+                      <span className="inline-flex items-center gap-0.5"><FileText className="h-3 w-3" />{entry.posts_count}</span>
+                      <span className="inline-flex items-center gap-0.5"><MessageSquare className="h-3 w-3" />{entry.comments_count}</span>
+                      <span className="inline-flex items-center gap-0.5"><Reply className="h-3 w-3" />{entry.replies_count}</span>
+                      <span className="inline-flex items-center gap-0.5"><Heart className="h-3 w-3" />{entry.likes_count}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-ink-dim flex-wrap">
-                    <span className="inline-flex items-center gap-0.5"><FileText className="h-3 w-3" />{entry.posts_count}</span>
-                    <span className="inline-flex items-center gap-0.5"><MessageSquare className="h-3 w-3" />{entry.comments_count}</span>
-                    <span className="inline-flex items-center gap-0.5"><Reply className="h-3 w-3" />{entry.replies_count}</span>
-                    <span className="inline-flex items-center gap-0.5"><Heart className="h-3 w-3" />{entry.likes_count}</span>
+                  <div className="text-right">
+                    <div className="font-mono font-bold text-ink">{entry.engagement_score.toLocaleString()}</div>
+                    <div className="text-[10px] text-ink-dim uppercase tracking-wider">{t.leaderboard.score}</div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-mono font-bold text-ink">{entry.engagement_score.toLocaleString()}</div>
-                  <div className="text-[10px] text-ink-dim uppercase tracking-wider">{t.leaderboard.score}</div>
-                </div>
+                </a>
               </li>
             );
           })}
@@ -211,37 +221,47 @@ function RoadmapSection({
             const isMe = entry.id === currentUserId;
             const name = entry.display_name || (entry.skool_handle ? `@${entry.skool_handle}` : entry.email.split('@')[0]);
             const level = calculateLevel(entry.total_points);
+            const skoolUrl = entry.skool_handle ? `https://www.skool.com/@${entry.skool_handle}` : null;
             return (
-              <li
-                key={entry.id}
-                className={cn(
-                  'flex items-center gap-3 p-3 rounded-lg border transition-colors',
-                  isMe ? 'border-accent bg-accent/5' : 'border-transparent hover:bg-bg-hover'
-                )}
-              >
-                <RankBadge rank={rank} />
-                {entry.skool_avatar_url ? (
-                  <img src={entry.skool_avatar_url} alt="" className="h-9 w-9 rounded-full object-cover shrink-0" />
-                ) : (
-                  <div className="h-9 w-9 rounded-full bg-bg-hover border border-line flex items-center justify-center text-xs font-mono text-ink-muted shrink-0">
-                    {name.slice(0, 2).toUpperCase()}
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-ink truncate">{name}</span>
-                    {isMe && (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-accent text-white font-bold uppercase tracking-wide">
-                        {t.leaderboard.you}
-                      </span>
+              <li key={entry.id}>
+                <a
+                  href={skoolUrl ?? '#'}
+                  target={skoolUrl ? '_blank' : undefined}
+                  rel={skoolUrl ? 'noopener noreferrer' : undefined}
+                  onClick={(e) => { if (!skoolUrl) e.preventDefault(); }}
+                  className={cn(
+                    'flex items-center gap-3 p-3 rounded-lg border transition-colors',
+                    skoolUrl && 'cursor-pointer',
+                    isMe ? 'border-accent bg-accent/5' : 'border-transparent hover:bg-bg-hover'
+                  )}
+                >
+                  <RankBadge rank={rank} />
+                  {entry.skool_avatar_url ? (
+                    <img src={entry.skool_avatar_url} alt="" className="h-9 w-9 rounded-full object-cover shrink-0" />
+                  ) : (
+                    <div className="h-9 w-9 rounded-full bg-bg-hover border border-line flex items-center justify-center text-xs font-mono text-ink-muted shrink-0">
+                      {name.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-ink truncate">{name}</span>
+                      {isMe && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-accent text-white font-bold uppercase tracking-wide">
+                          {t.leaderboard.you}
+                        </span>
+                      )}
+                    </div>
+                    {entry.skool_handle && (
+                      <div className="text-xs text-ink-dim font-mono truncate">@{entry.skool_handle}</div>
                     )}
+                    <div className="text-xs text-ink-dim">Lv.{level} · {tenureLabel(entry.tenure)}</div>
                   </div>
-                  <div className="text-xs text-ink-dim">Lv.{level} · {tenureLabel(entry.tenure)}</div>
-                </div>
-                <div className="text-right">
-                  <div className="font-mono font-bold text-ink">{entry.total_points.toLocaleString()}</div>
-                  <div className="text-[10px] text-ink-dim uppercase tracking-wider">pts</div>
-                </div>
+                  <div className="text-right">
+                    <div className="font-mono font-bold text-ink">{entry.total_points.toLocaleString()}</div>
+                    <div className="text-[10px] text-ink-dim uppercase tracking-wider">pts</div>
+                  </div>
+                </a>
               </li>
             );
           })}
