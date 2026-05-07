@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Flame, CheckCircle2, ShieldAlert, ShieldCheck, ArrowLeft, ArrowRight, PartyPopper } from 'lucide-react';
+import { Flame, CheckCircle2, ShieldAlert, ShieldCheck, ArrowLeft, Check } from 'lucide-react';
+import { Confetti } from '@/components/Confetti';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -82,15 +83,9 @@ export default function SignupPage() {
       return;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setSuccess(t.auth.signupSuccess);
-      setLoading(false);
-      return;
-    }
-
-    // Persist the verified handle on the new profile right after auth.
-    // The verify endpoint also computes email/handle match score.
+    // Persist the verified handle on the new profile.
+    // (May fail silently if Supabase still requires email confirmation —
+    //  the verify endpoint will be retried on the user's next visit.)
     try {
       await fetch('/api/skool/verify', {
         method: 'POST',
@@ -98,10 +93,11 @@ export default function SignupPage() {
         body: JSON.stringify({ handle: prefilled.handle }),
       });
     } catch {
-      // Non-fatal — onboarding will retry / admin can fix manually
+      // Non-fatal
     }
 
-    // Switch to celebration state — auto-advances to onboarding after 3s
+    // Always celebrate — Supabase should be configured with email
+    // confirmation OFF so the user is signed in immediately.
     setLoading(false);
     setCelebrating(true);
   };
@@ -155,64 +151,50 @@ export default function SignupPage() {
   // Celebration screen — shown immediately after successful signup, then auto-redirects
   if (celebrating) {
     const displayName = prefilled.displayName || `@${prefilled.handle}`;
+    const firstName = displayName.split(/\s+/)[0];
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-12">
-        <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+      <div className="min-h-screen flex items-center justify-center px-4 py-12 overflow-hidden">
+        <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
           <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-success/15 blur-[140px]" />
           <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] rounded-full bg-accent/10 blur-[120px]" />
         </div>
 
-        <div className="w-full max-w-md animate-slide-up">
-          <div className="card-premium p-8 sm:p-10 text-center">
-            {/* Big avatar + checkmark badge */}
-            <div className="relative inline-block mb-6">
+        {/* Confetti */}
+        <Confetti />
+
+        <div className="w-full max-w-md animate-slide-up relative">
+          <div onClick={handleContinueNow} className="card-premium px-6 py-10 sm:px-8 sm:py-12 text-center cursor-pointer">
+            {/* Green check circle */}
+            <div className="inline-flex items-center justify-center h-22 w-22 sm:h-24 sm:w-24 rounded-full bg-success/15 border border-success/40 mb-5">
+              <Check className="h-12 w-12 sm:h-14 sm:w-14 text-success" strokeWidth={3} />
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-ink mb-2">
+              {(t.welcome.successWelcome ?? 'Welcome,').replace('{name}', firstName)}{' '}
+              <span className="inline-block">🎉</span>
+            </h1>
+
+            <p className="text-sm text-ink-muted mb-5">
+              {t.welcome.successAccountReady}
+            </p>
+
+            {/* Identity chip */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-bg-raised border border-line">
               {prefilled.avatarUrl ? (
-                <img
-                  src={prefilled.avatarUrl}
-                  alt={displayName}
-                  className="h-32 w-32 sm:h-36 sm:w-36 rounded-full object-cover border-4 border-success/40 glow-blue"
-                />
+                <img src={prefilled.avatarUrl} alt="" className="h-6 w-6 rounded-full object-cover" />
               ) : (
-                <div className="h-32 w-32 sm:h-36 sm:w-36 rounded-full bg-gradient-to-br from-accent to-accent-hover flex items-center justify-center font-display text-5xl font-bold text-white border-4 border-success/40 glow-blue">
+                <div className="h-6 w-6 rounded-full bg-bg-card border border-line flex items-center justify-center text-[10px] font-mono text-ink-muted">
                   {prefilled.handle.slice(0, 2).toUpperCase()}
                 </div>
               )}
-              <div className="absolute -bottom-1 -right-1 h-12 w-12 rounded-full bg-success border-4 border-bg-card flex items-center justify-center">
-                <CheckCircle2 className="h-6 w-6 text-white" strokeWidth={3} />
-              </div>
+              <span className="text-sm font-medium text-ink">{displayName}</span>
             </div>
-
-            <div className="inline-flex items-center justify-center gap-2 mb-2">
-              <PartyPopper className="h-5 w-5 text-accent" />
-              <span className="text-xs font-mono uppercase tracking-[0.2em] text-accent">
-                {t.welcome.successMessage}
-              </span>
-              <PartyPopper className="h-5 w-5 text-accent scale-x-[-1]" />
-            </div>
-
-            <h1 className="font-display text-3xl sm:text-4xl font-bold mb-3 gradient-text">
-              {t.welcome.successTitle}
-            </h1>
-
-            <p className="text-base text-ink mb-1">
-              <span className="font-semibold">{displayName}</span>
-            </p>
-            <p className="text-xs text-ink-muted font-mono mb-6">@{prefilled.handle}</p>
-
-            <p className="text-sm text-ink-muted mb-6">
-              <span className="inline-block h-3 w-3 rounded-full bg-success animate-pulse mr-2 align-middle" />
-              {t.welcome.successRedirecting}
-            </p>
-
-            <button
-              type="button"
-              onClick={handleContinueNow}
-              className="inline-flex items-center justify-center gap-2 w-full h-13 px-7 rounded-lg bg-accent text-white font-medium text-base hover:bg-accent-hover shadow-lg shadow-accent/20 hover:shadow-accent/40 hover:-translate-y-0.5 transition-all"
-            >
-              {t.welcome.successContinue}
-              <ArrowRight className="h-4 w-4" />
-            </button>
           </div>
+
+          <p className="mt-5 text-xs text-center text-ink-dim flex items-center justify-center gap-1.5">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+            {t.welcome.successRedirecting}
+          </p>
         </div>
       </div>
     );

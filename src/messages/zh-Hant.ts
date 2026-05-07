@@ -231,6 +231,8 @@ export const t = {
     // Post-signup celebration
     successTitle: '恭喜！',
     successMessage: '做得好',
+    successWelcome: '歡迎，{name}！',
+    successAccountReady: '您的帳戶已建立',
     successRedirecting: '正在帶您前往問答…',
     successContinue: '繼續',
   },
@@ -238,7 +240,10 @@ export const t = {
     title: '快速問答',
     subtitle: '回答 {total} 題，為您打造專屬地圖',
     progressLabel: '第 {current} / {total} 題',
+    answeredLabel: '已回答 {answered} / {total}',
     back: '上一題',
+    submitCta: '建立我的地圖',
+    submitCtaIncomplete: '請完成所有題目',
     finishing: '正在打造您的地圖…',
   },
 };

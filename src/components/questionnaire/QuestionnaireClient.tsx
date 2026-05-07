@@ -2,12 +2,18 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, Flame } from 'lucide-react';
+import { ArrowRight, Flame } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useT, useLocale } from '@/lib/i18n/client';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { cn } from '@/lib/utils';
-import { QUESTIONS, TOTAL_QUESTIONS, deriveDimensions, type QuestionOption } from '@/data/questionnaire';
+import {
+  QUESTIONS,
+  TOTAL_QUESTIONS,
+  deriveDimensions,
+  type Question,
+  type QuestionOption,
+} from '@/data/questionnaire';
 import { assignTrack, generateRoadmap } from '@/lib/roadmap/generator';
 
 export function QuestionnaireClient() {
@@ -17,37 +23,26 @@ export function QuestionnaireClient() {
   const supabase = createClient();
   const isZh = locale === 'zh-Hant';
 
-  const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
+  // Answers keyed by question id so questions can be reordered without re-mapping
+  const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [chosen, setChosen] = useState<number | null>(null); // brief flash before advancing
 
-  const q = QUESTIONS[index];
-  const progressPct = ((index + (chosen != null ? 1 : 0)) / TOTAL_QUESTIONS) * 100;
+  const answeredCount = Object.keys(answers).length;
+  const allAnswered = answeredCount === TOTAL_QUESTIONS;
+  const progressPct = (answeredCount / TOTAL_QUESTIONS) * 100;
 
-  const choose = (optIdx: number) => {
-    if (submitting || chosen !== null) return;
-    setChosen(optIdx);
-    // Briefly highlight the selection so the tap feels acknowledged
-    setTimeout(() => {
-      const newAnswers = [...answers.slice(0, index), optIdx];
-      setAnswers(newAnswers);
-      setChosen(null);
-      if (index < TOTAL_QUESTIONS - 1) {
-        setIndex(index + 1);
-      } else {
-        void submit(newAnswers);
-      }
-    }, 250);
+  const optText = (o: QuestionOption) => (isZh ? o.zh : o.en);
+  const optDesc = (o: QuestionOption) => (isZh ? o.desc.zh : o.desc.en);
+  const qText = (q: Question) => (isZh ? q.zh : q.en);
+  const qDesc = (q: Question) => (q.desc ? (isZh ? q.desc.zh : q.desc.en) : null);
+
+  const choose = (qId: string, optionIdx: number) => {
+    setAnswers((prev) => ({ ...prev, [qId]: optionIdx }));
   };
 
-  const goBack = () => {
-    if (submitting || index === 0) return;
-    setIndex(index - 1);
-  };
-
-  const submit = async (allAnswers: number[]) => {
+  const submit = async () => {
+    if (!allAnswered || submitting) return;
     setSubmitting(true);
     setSubmitError(null);
 
@@ -57,10 +52,9 @@ export function QuestionnaireClient() {
       return;
     }
 
-    const derived = deriveDimensions(allAnswers);
+    const derived = deriveDimensions(answers);
     const track = assignTrack(derived.tenure, derived.goal, derived.intensity);
 
-    // 1. Save profile fields + raw answers
     const { error: pErr } = await supabase
       .from('profiles')
       .update({
@@ -68,7 +62,7 @@ export function QuestionnaireClient() {
         goal: derived.goal,
         intensity: derived.intensity,
         track_assigned: track,
-        questionnaire_answers: allAnswers,
+        questionnaire_answers: answers,
         questionnaire_completed_at: new Date().toISOString(),
         onboarding_completed: true,
       })
@@ -79,7 +73,7 @@ export function QuestionnaireClient() {
       return;
     }
 
-    // 2. Generate the 30-day roadmap (only if user_tasks is empty so we don't dupe)
+    // Generate roadmap if user_tasks empty
     const { count } = await supabase
       .from('user_tasks')
       .select('id', { head: true, count: 'exact' })
@@ -109,18 +103,18 @@ export function QuestionnaireClient() {
     router.refresh();
   };
 
-  const optionText = (o: QuestionOption) => (isZh ? o.zh : o.en);
-  const questionText = isZh ? q.zh : q.en;
-
-  // Submitting / finishing state
+  // Submitting state — full-page spinner
   if (submitting) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
         <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
           <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-accent/10 blur-[140px]" />
         </div>
-        <div className="h-12 w-12 rounded-full border-4 border-accent border-t-transparent animate-spin mb-6" />
-        <p className="text-ink-muted">{t.questionnaire.finishing}</p>
+        <div className="relative">
+          <Flame className="h-7 w-7 text-accent/60 absolute inset-0 m-auto" strokeWidth={2.5} />
+          <div className="h-16 w-16 rounded-full border-4 border-accent/30 border-t-accent animate-spin" />
+        </div>
+        <p className="mt-6 text-ink-muted">{t.questionnaire.finishing}</p>
         {submitError && (
           <p className="mt-3 text-xs text-danger max-w-sm">{submitError}</p>
         )}
@@ -130,18 +124,24 @@ export function QuestionnaireClient() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Fixed top bar — same treatment as welcome/confirm */}
+      {/* Fixed top bar with progress */}
       <header className="fixed top-0 left-0 right-0 z-30 backdrop-blur-xl bg-bg/70 border-b border-line/60">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-3">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 flex h-16 items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
             <Flame className="h-6 w-6 text-accent shrink-0" strokeWidth={2.5} />
             <span className="font-display text-lg sm:text-xl font-bold tracking-tight truncate">
               NMO <span className="gradient-text">Roadmap</span>
             </span>
           </div>
-          <LanguageSwitcher />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="hidden sm:inline text-xs font-mono text-ink-dim">
+              {(t.questionnaire.answeredLabel as string)
+                .replace('{answered}', String(answeredCount))
+                .replace('{total}', String(TOTAL_QUESTIONS))}
+            </span>
+            <LanguageSwitcher />
+          </div>
         </div>
-        {/* Progress bar inside the header */}
         <div className="h-1 bg-bg-raised">
           <div
             className="h-full bg-gradient-to-r from-accent to-accent-glow transition-all duration-300 ease-out"
@@ -150,77 +150,108 @@ export function QuestionnaireClient() {
         </div>
       </header>
 
-      {/* Decorative glow */}
+      {/* Decorative background */}
       <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-accent/10 blur-[140px]" />
+        <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-accent/8 blur-[140px]" />
       </div>
 
-      <main className="flex-1 flex items-center justify-center px-4 pt-24 pb-12">
-        <div className="w-full max-w-md animate-fade-in">
-          {/* Question header */}
-          <div className="mb-6 text-center">
-            <div className="text-xs font-mono uppercase tracking-[0.2em] text-accent mb-3">
-              {(t.questionnaire.progressLabel as string)
-                .replace('{current}', String(index + 1))
-                .replace('{total}', String(TOTAL_QUESTIONS))}
-            </div>
-            <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight leading-snug text-ink">
-              {questionText}
-            </h1>
-          </div>
+      <main className="flex-1 mx-auto w-full max-w-3xl px-4 sm:px-6 pt-24 pb-32">
+        {/* Page header */}
+        <div className="mb-10 text-center animate-slide-up">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mb-3">
+            <span className="gradient-text">{t.questionnaire.title}</span>
+          </h1>
+          <p className="text-ink-muted text-sm sm:text-base">
+            {(t.questionnaire.subtitle as string).replace('{total}', String(TOTAL_QUESTIONS))}
+          </p>
+        </div>
 
-          {/* Options — full width, big tap targets, vertical stack */}
-          <div className="space-y-3">
-            {q.options.map((opt, i) => {
-              const isChosen = chosen === i;
-              return (
-                <button
-                  key={`${q.id}-${i}`}
-                  type="button"
-                  onClick={() => choose(i)}
-                  disabled={chosen !== null}
-                  className={cn(
-                    'w-full min-h-[64px] sm:min-h-[68px] px-5 py-4 rounded-2xl border text-left text-base font-medium transition-all',
-                    'flex items-center gap-3',
-                    'disabled:cursor-not-allowed',
-                    isChosen
-                      ? 'border-accent bg-accent text-white shadow-lg shadow-accent/30 scale-[0.99]'
-                      : 'border-line-strong bg-bg-raised text-ink hover:border-accent/60 hover:bg-bg-hover active:scale-[0.99]'
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'h-7 w-7 shrink-0 rounded-full border-2 flex items-center justify-center text-xs font-mono',
-                      isChosen
-                        ? 'border-white bg-white text-accent'
-                        : 'border-line-strong text-ink-dim'
-                    )}
-                  >
-                    {isChosen ? <Check className="h-4 w-4" strokeWidth={3} /> : String.fromCharCode(65 + i)}
-                  </span>
-                  <span className="flex-1 leading-snug">{optionText(opt)}</span>
-                </button>
-              );
-            })}
-          </div>
+        {/* All questions in one scrollable form */}
+        <div className="space-y-10 sm:space-y-12">
+          {QUESTIONS.map((q) => {
+            const selectedIdx = answers[q.id];
+            const cols = optionGridCols(q.options.length);
+            return (
+              <section key={q.id} className="animate-fade-in">
+                <h2 className="text-base sm:text-lg font-semibold text-ink mb-1 flex items-baseline gap-2">
+                  <span className="text-xl sm:text-2xl">{q.emoji}</span>
+                  <span className="leading-snug">{qText(q)}</span>
+                </h2>
+                {qDesc(q) && (
+                  <p className="text-xs sm:text-sm text-ink-muted mb-4 ml-9">{qDesc(q)}</p>
+                )}
 
-          {/* Footer — back button + counter */}
-          <div className="mt-6 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={goBack}
-              disabled={index === 0 || chosen !== null}
-              className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              {t.questionnaire.back}
-            </button>
-            <span className="text-xs font-mono text-ink-dim">
-              {index + 1} / {TOTAL_QUESTIONS}
-            </span>
-          </div>
+                <div className={cn('grid gap-3', cols)}>
+                  {q.options.map((opt, i) => {
+                    const isSelected = selectedIdx === i;
+                    return (
+                      <button
+                        key={`${q.id}-${i}`}
+                        type="button"
+                        onClick={() => choose(q.id, i)}
+                        className={cn(
+                          'flex flex-col items-center justify-start text-center px-3 py-5 rounded-2xl border transition-all',
+                          'min-h-[128px] sm:min-h-[140px]',
+                          isSelected
+                            ? 'border-accent bg-accent/10 glow-blue scale-[0.99]'
+                            : 'border-line-strong bg-bg-raised hover:border-accent/50 hover:bg-bg-hover active:scale-[0.99]'
+                        )}
+                      >
+                        <span className="text-3xl sm:text-4xl mb-2 leading-none">{opt.emoji}</span>
+                        <span className="font-semibold text-ink text-sm sm:text-base leading-tight">
+                          {optText(opt)}
+                        </span>
+                        <span className="text-[11px] sm:text-xs text-ink-muted mt-1 leading-snug">
+                          {optDesc(opt)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
         </div>
       </main>
+
+      {/* Sticky submit footer */}
+      <footer className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-xl bg-bg/85 border-t border-line/60">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+          <span className="text-xs sm:text-sm font-mono text-ink-dim sm:hidden">
+            {answeredCount}/{TOTAL_QUESTIONS}
+          </span>
+          <span className="hidden sm:inline text-sm text-ink-muted">
+            {(t.questionnaire.answeredLabel as string)
+              .replace('{answered}', String(answeredCount))
+              .replace('{total}', String(TOTAL_QUESTIONS))}
+          </span>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!allAnswered}
+            className={cn(
+              'inline-flex items-center justify-center gap-2 h-12 sm:h-13 px-6 sm:px-7 rounded-lg font-medium text-sm sm:text-base transition-all',
+              allAnswered
+                ? 'bg-accent text-white hover:bg-accent-hover shadow-lg shadow-accent/20 hover:shadow-accent/40 hover:-translate-y-0.5'
+                : 'bg-bg-raised text-ink-dim cursor-not-allowed'
+            )}
+          >
+            {allAnswered ? t.questionnaire.submitCta : t.questionnaire.submitCtaIncomplete}
+            {allAnswered && <ArrowRight className="h-4 w-4" />}
+          </button>
+        </div>
+      </footer>
     </div>
   );
+}
+
+/**
+ * Pick a responsive grid column count based on how many options the
+ * question has. Mobile defaults to 2 columns (compact) and expands on sm+.
+ */
+function optionGridCols(n: number): string {
+  if (n <= 2) return 'grid-cols-2';
+  if (n === 3) return 'grid-cols-1 sm:grid-cols-3';
+  if (n === 4) return 'grid-cols-2 sm:grid-cols-4';
+  return 'grid-cols-2 sm:grid-cols-3'; // fallback for 5+
 }

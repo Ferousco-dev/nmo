@@ -241,6 +241,8 @@ export const t = {
     // Post-signup celebration
     successTitle: "Congratulations!",
     successMessage: "Well done",
+    successWelcome: "Welcome, {name}!",
+    successAccountReady: "Your account is ready",
     successRedirecting: "Taking you to a quick check-in…",
     successContinue: "Continue",
   },
@@ -248,7 +250,10 @@ export const t = {
     title: "Quick check-in",
     subtitle: "Answer {total} quick questions to set up your roadmap",
     progressLabel: "Question {current} of {total}",
+    answeredLabel: "{answered} of {total} answered",
     back: "Back",
+    submitCta: "Build my roadmap",
+    submitCtaIncomplete: "Answer all questions to continue",
     finishing: "Building your roadmap…",
   },
 };
