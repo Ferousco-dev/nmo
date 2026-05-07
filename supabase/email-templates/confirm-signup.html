@@ -1,0 +1,167 @@
+<!--
+  NMO Roadmap — Confirm Signup Email Template
+  Paste into: Supabase Dashboard → Authentication → Email Templates → Confirm signup
+
+  Available template variables:
+    {{ .ConfirmationURL }}  — magic confirmation link
+    {{ .Email }}            — user's email address
+    {{ .SiteURL }}          — Site URL configured in Supabase
+    {{ .Token }}            — raw token (rarely needed)
+-->
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="supported-color-schemes" content="dark light">
+  <title>確認您的 NMO Roadmap 帳戶</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    /* Reset */
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #09090b; }
+    a { color: #3b82f6; text-decoration: none; }
+
+    /* Type */
+    .display { font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif; }
+    .body-cn { font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+    /* Force dark even in clients that auto-invert */
+    [data-ogsc] body, [data-ogsb] body { background-color: #09090b !important; }
+
+    /* Mobile */
+    @media only screen and (max-width: 620px) {
+      .container { width: 100% !important; }
+      .px { padding-left: 24px !important; padding-right: 24px !important; }
+      .h1 { font-size: 32px !important; line-height: 1.2 !important; }
+      .btn a { display: block !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#09090b;">
+  <!-- Preheader (hidden preview text) -->
+  <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;color:#09090b;">
+    您的 30 天成功地圖即將開啟 — 點擊確認您的電子郵件以開始。
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#09090b;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+
+        <!-- Container -->
+        <table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:560px;">
+
+          <!-- Brand mark -->
+          <tr>
+            <td align="center" style="padding-bottom:32px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" valign="middle" width="56" height="56" style="width:56px;height:56px;background-color:#0c1a33;border:1px solid rgba(59,130,246,0.4);border-radius:14px;">
+                    <span style="font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:700;color:#3b82f6;line-height:56px;">N</span>
+                  </td>
+                </tr>
+              </table>
+              <div class="body-cn" style="margin-top:12px;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#71717a;font-weight:500;">
+                NMO ROADMAP
+              </div>
+            </td>
+          </tr>
+
+          <!-- Card -->
+          <tr>
+            <td class="px" style="background-color:#0a0a0a;background-image:linear-gradient(180deg,#111114 0%,#0a0a0a 100%);border:1px solid #27272a;border-radius:16px;padding:48px 48px;">
+
+              <!-- Title -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center">
+                    <h1 class="display h1" style="margin:0 0 16px 0;font-size:40px;line-height:1.15;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">
+                      歡迎來到 <span style="background:linear-gradient(135deg,#60a5fa 0%,#3b82f6 50%,#2563eb 100%);-webkit-background-clip:text;background-clip:text;color:#3b82f6;-webkit-text-fill-color:transparent;">NMO</span>
+                    </h1>
+                    <p class="body-cn" style="margin:0;font-size:15px;line-height:1.6;color:#a1a1aa;">
+                      您的 30 天成功地圖即將開啟。<br>
+                      請點擊下方按鈕確認您的電子郵件以開始旅程。
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Divider -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:32px 0;">
+                <tr><td height="1" style="background-color:#27272a;line-height:1px;font-size:1px;">&nbsp;</td></tr>
+              </table>
+
+              <!-- CTA Button (bulletproof) -->
+              <table role="presentation" class="btn" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center">
+                    <!--[if mso]>
+                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .ConfirmationURL }}" style="height:52px;v-text-anchor:middle;width:280px;" arcsize="20%" stroke="f" fillcolor="#3b82f6">
+                      <w:anchorlock/>
+                      <center style="color:#ffffff;font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;font-size:15px;font-weight:700;letter-spacing:0.05em;">確認電子郵件</center>
+                    </v:roundrect>
+                    <![endif]-->
+                    <!--[if !mso]><!-- -->
+                    <a href="{{ .ConfirmationURL }}" class="body-cn" style="display:inline-block;background-color:#3b82f6;background-image:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%);color:#ffffff;font-size:15px;font-weight:700;letter-spacing:0.05em;text-decoration:none;padding:16px 44px;border-radius:10px;box-shadow:0 8px 24px rgba(59,130,246,0.35);">
+                      確認電子郵件
+                    </a>
+                    <!--<![endif]-->
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Fallback link -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:32px;">
+                <tr>
+                  <td align="center">
+                    <p class="body-cn" style="margin:0 0 8px 0;font-size:12px;line-height:1.6;color:#71717a;">
+                      按鈕無法點擊？請複製以下連結至瀏覽器：
+                    </p>
+                    <p class="body-cn" style="margin:0;font-size:12px;line-height:1.6;word-break:break-all;">
+                      <a href="{{ .ConfirmationURL }}" style="color:#3b82f6;text-decoration:underline;">{{ .ConfirmationURL }}</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Account info -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:32px;">
+                <tr>
+                  <td style="background-color:#18181b;border:1px solid #27272a;border-radius:10px;padding:16px 20px;">
+                    <p class="body-cn" style="margin:0;font-size:12px;color:#71717a;">
+                      帳戶：<span style="color:#d4d4d8;font-weight:500;">{{ .Email }}</span>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" class="px" style="padding:32px 48px 0 48px;">
+              <p class="body-cn" style="margin:0 0 8px 0;font-size:12px;line-height:1.6;color:#71717a;">
+                如果您沒有註冊 NMO Roadmap，請忽略此郵件。
+              </p>
+              <p class="body-cn" style="margin:0;font-size:11px;line-height:1.6;color:#52525b;">
+                此確認連結將在 24 小時內失效。
+              </p>
+              <p class="display" style="margin:24px 0 0 0;font-size:13px;color:#52525b;letter-spacing:0.15em;">
+                NMO ROADMAP · AI 商業 30 天成功地圖
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

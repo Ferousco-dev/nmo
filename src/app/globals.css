@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=Noto+Serif+TC:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  background: #09090b;
+  color: #fafafa;
+  font-family: 'Noto Sans TC', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle grid background for dark premium feel */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(63, 63, 70, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(63, 63, 70, 0.07) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Selection */
+::selection {
+  background: #3b82f6;
+  color: #fafafa;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #09090b;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Reusable card with subtle glow */
+.card-premium {
+  background: linear-gradient(180deg, #1f1f23 0%, #18181b 100%);
+  border: 1px solid #27272a;
+  border-radius: 12px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 24px rgba(0,0,0,0.4);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.glow-blue {
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3),
+              0 0 24px rgba(59, 130, 246, 0.25);
+}
+
+/* Display font.
+   Cormorant Garamond has no CJK glyphs, so Chinese characters fall through
+   to Noto Serif TC for visually-consistent rendering of mixed text. */
+.font-display {
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', 'PingFang TC', 'Songti TC', Georgia, serif;
+  letter-spacing: -0.02em;
+}
+
+/* Skeleton shimmer for loading placeholders */
+@keyframes skeletonShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(63, 63, 70, 0.18) 0%,
+    rgba(63, 63, 70, 0.4) 50%,
+    rgba(63, 63, 70, 0.18) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s linear infinite;
+}

@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+build/
+next-env.d.ts
+
+# Environment + secrets — applies to .env files in any directory
+.env
+.env.local
+.env.*.local
+
+# Runtime / generated
+*.log
+*.tsbuildinfo
+
+# OS / editor / tooling
+.DS_Store
+.vercel
+.vscode/
+.claude/
+.idea/
+
+# Companion bot lives in its own repo: https://github.com/Ferousco-dev/nom-bot
+bot/
+
+# One-off dev artefacts (browser console snippets, scrape dumps, etc.)
+catch.js
+user.json
+*.dump.json
