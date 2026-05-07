@@ -12,11 +12,14 @@ import { createClient } from '@/lib/supabase/server';
 import { TopNav } from '@/components/TopNav';
 import { TRACK_NAMES_ZH } from '@/lib/roadmap/generator';
 import { calculateLevel, cn } from '@/lib/utils';
-import { getT } from '@/lib/i18n/server';
-import type { Pathway, SkoolMembershipStatus } from '@/types';
+import { getT, getLocale } from '@/lib/i18n/server';
+import { BadgeCard } from '@/components/badges/BadgeCard';
+import { currentTier, nextTier } from '@/lib/badges';
+import type { Badge, Pathway, SkoolMembershipStatus } from '@/types';
 
 export default async function ProfilePage() {
   const t = getT();
+  const locale = getLocale();
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
@@ -67,6 +70,27 @@ export default async function ProfilePage() {
     .select('engagement_score, posts_count, comments_count, replies_count, likes_count')
     .eq('user_id', user.id)
     .maybeSingle();
+
+  // Fetch the full badge catalog + the user's earned badges in parallel.
+  const [{ data: allBadges }, { data: earned }] = await Promise.all([
+    supabase
+      .from('badges')
+      .select('*')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true }),
+    supabase
+      .from('user_badges')
+      .select('badge_id')
+      .eq('user_id', user.id),
+  ]);
+
+  const catalog = (allBadges ?? []) as Badge[];
+  const earnedIds = new Set((earned ?? []).map((row: { badge_id: string }) => row.badge_id));
+  const tierBadges = catalog.filter((b) => b.category === 'tier');
+  const specialBadges = catalog.filter((b) => b.category !== 'tier');
+  const earnedBadges = catalog.filter((b) => earnedIds.has(b.id));
+  const userTier = currentTier(profile.total_points);
+  const userNextTier = nextTier(profile.total_points);
 
   return (
     <div className="min-h-screen">
@@ -177,6 +201,56 @@ export default async function ProfilePage() {
               查看您的 30 天地圖 →
             </Link>
           </div>
+        </div>
+
+        {/* Badges */}
+        <div className="card-premium p-8 mt-6">
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="font-display text-xl font-bold">{t.badges.sectionTitle}</h3>
+            {userNextTier ? (
+              <span className="text-xs text-ink-dim font-mono">
+                {t.badges.nextTier}: Lv {userNextTier.tier} ·{' '}
+                {(t.badges.pointsToNext as string).replace(
+                  '{points}',
+                  userNextTier.pointsToGo.toLocaleString()
+                )}
+              </span>
+            ) : (
+              <span className="text-xs text-success font-mono">{t.badges.maxTierReached}</span>
+            )}
+          </div>
+          <p className="text-xs text-ink-muted mb-5">
+            {earnedBadges.length} {t.badges.earned} · Lv {userTier}
+          </p>
+
+          {catalog.length === 0 ? (
+            <p className="text-sm text-ink-muted text-center py-8">{t.badges.empty}</p>
+          ) : (
+            <>
+              {/* Earned specials (collectibles) — shown first if any */}
+              {specialBadges.some((b) => earnedIds.has(b.id)) && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-6">
+                  {specialBadges
+                    .filter((b) => earnedIds.has(b.id))
+                    .map((badge) => (
+                      <BadgeCard key={badge.id} badge={badge} locale={locale} />
+                    ))}
+                </div>
+              )}
+
+              {/* Tier ladder — earned bright, future tiers locked-preview */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                {tierBadges.map((badge) => (
+                  <BadgeCard
+                    key={badge.id}
+                    badge={badge}
+                    locale={locale}
+                    locked={!earnedIds.has(badge.id)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </main>
     </div>

@@ -189,6 +189,15 @@ export const t = {
       scale: { label: '擴展期', desc: '系統化、穩定獲利' },
     },
   },
+  badges: {
+    sectionTitle: '徽章',
+    earned: '已獲得',
+    locked: '尚未解鎖',
+    nextTier: '下一階',
+    pointsToNext: '還差 {points} 點',
+    maxTierReached: '已達最高階',
+    empty: '完成任務即可獲得徽章。',
+  },
   activity: {
     title: '我的活躍度',
     subtitle: '我們的機器人會持續觀察 NMO 社群，根據您的互動為您打分。',

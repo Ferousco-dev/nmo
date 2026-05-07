@@ -103,6 +103,45 @@ export interface RoadmapDay {
   tasks: RoadmapTask[];
 }
 
+// =====================================================
+// Badges
+// =====================================================
+export type BadgeCategory = 'tier' | 'streak' | 'milestone' | 'event' | 'special';
+
+export interface Badge {
+  id: string;
+  key: string;
+  name_zh: string;
+  name_en: string;
+  description_zh: string | null;
+  description_en: string | null;
+  /** Lucide icon component name, e.g. 'Trophy', 'Crown' */
+  icon: string | null;
+  /** Hex colour for the badge background / accent */
+  color: string | null;
+  /** 1–10 for tier badges, null for one-off specials */
+  tier: number | null;
+  /** Total points needed to auto-earn (tier badges only) */
+  points_threshold: number | null;
+  category: BadgeCategory;
+  is_active: boolean;
+  display_order: number;
+}
+
+export interface UserBadge {
+  id: string;
+  user_id: string;
+  badge_id: string;
+  awarded_at: string;
+  awarded_by: string | null;
+  reason: string | null;
+}
+
+/** Convenience join shape used in the UI */
+export interface UserBadgeWithDetails extends UserBadge {
+  badge: Badge;
+}
+
 export interface RoadmapTask {
   id: string;
   title: string;

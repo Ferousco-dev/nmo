@@ -195,6 +195,15 @@ export const t = {
       scale: { label: 'Scale', desc: 'Systemising, steady revenue' },
     },
   },
+  badges: {
+    sectionTitle: 'Badges',
+    earned: 'Earned',
+    locked: 'Locked',
+    nextTier: 'Next tier',
+    pointsToNext: '{points} pts to go',
+    maxTierReached: 'Max tier reached',
+    empty: 'Complete tasks to earn your first badge.',
+  },
   activity: {
     title: "My activity",
     subtitle: "Our bot watches the NMO community and grades your engagement.",

@@ -1,10 +1,13 @@
 import { redirect } from 'next/navigation';
-import { Trophy, Medal, Award, Activity, Map, Zap, FileText, MessageSquare, Reply, Heart } from 'lucide-react';
+import { Trophy, Medal, Award, Activity, Map as MapIcon, Zap, FileText, MessageSquare, Reply, Heart } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { TopNav } from '@/components/TopNav';
 import { calculateLevel, cn } from '@/lib/utils';
-import { getT } from '@/lib/i18n/server';
+import { getT, getLocale } from '@/lib/i18n/server';
+import { BadgeChip } from '@/components/badges/BadgeChip';
+import { currentTier } from '@/lib/badges';
+import type { Badge } from '@/types';
 
 type Tab = 'activity' | 'roadmap';
 
@@ -37,13 +40,14 @@ export default async function LeaderboardPage({
   searchParams: { tab?: string };
 }) {
   const t = getT();
+  const locale = getLocale();
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
   const tab: Tab = searchParams.tab === 'roadmap' ? 'roadmap' : 'activity';
 
-  const [allTimeActivityRes, recentActivityRes, roadmapRes] = await Promise.all([
+  const [allTimeActivityRes, recentActivityRes, roadmapRes, tierBadgesRes] = await Promise.all([
     supabase
       .from('engagement_grades')
       .select('*')
@@ -59,11 +63,18 @@ export default async function LeaderboardPage({
       .select('id, display_name, email, skool_handle, skool_avatar_url, total_points, tenure')
       .order('total_points', { ascending: false })
       .limit(50),
+    supabase
+      .from('badges')
+      .select('*')
+      .eq('category', 'tier')
+      .eq('is_active', true)
+      .order('tier', { ascending: true }),
   ]);
 
   const allTimeActivity = (allTimeActivityRes.data || []) as ActivityEntry[];
   const recentActivity = (recentActivityRes.data || []) as ActivityEntry[];
   const roadmap = (roadmapRes.data || []) as RoadmapEntry[];
+  const tierBadges = (tierBadgesRes.data || []) as Badge[];
 
   return (
     <div className="min-h-screen">
@@ -79,7 +90,7 @@ export default async function LeaderboardPage({
         {/* Tab switcher */}
         <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-bg-raised border border-line mb-6">
           <TabLink tab="activity" current={tab} icon={<Activity className="h-4 w-4" />} label={t.leaderboard.tabActivity} />
-          <TabLink tab="roadmap" current={tab} icon={<Map className="h-4 w-4" />} label={t.leaderboard.tabRoadmap} />
+          <TabLink tab="roadmap" current={tab} icon={<MapIcon className="h-4 w-4" />} label={t.leaderboard.tabRoadmap} />
         </div>
 
         {tab === 'activity' ? (
@@ -88,7 +99,14 @@ export default async function LeaderboardPage({
             <ActivitySection title={t.leaderboard.activityAllTime} Icon={Trophy} entries={allTimeActivity} currentUserId={user.id} />
           </div>
         ) : (
-          <RoadmapSection title={t.leaderboard.roadmapPoints} Icon={Map} entries={roadmap} currentUserId={user.id} />
+          <RoadmapSection
+            title={t.leaderboard.roadmapPoints}
+            Icon={MapIcon}
+            entries={roadmap}
+            currentUserId={user.id}
+            tierBadges={tierBadges}
+            locale={locale}
+          />
         )}
       </main>
     </div>
@@ -198,13 +216,21 @@ function RoadmapSection({
   Icon,
   entries,
   currentUserId,
+  tierBadges,
+  locale,
 }: {
   title: string;
   Icon: LucideIcon;
   entries: RoadmapEntry[];
   currentUserId: string;
+  tierBadges: Badge[];
+  locale: string;
 }) {
   const t = getT();
+  const tierByNumber = new Map<number, Badge>();
+  for (const badge of tierBadges) {
+    if (badge.tier != null) tierByNumber.set(badge.tier, badge);
+  }
   return (
     <div className="card-premium p-6">
       <h2 className="font-display text-xl sm:text-2xl font-bold mb-5 flex items-center gap-2">
@@ -220,7 +246,8 @@ function RoadmapSection({
             const rank = idx + 1;
             const isMe = entry.id === currentUserId;
             const name = entry.display_name || (entry.skool_handle ? `@${entry.skool_handle}` : entry.email.split('@')[0]);
-            const level = calculateLevel(entry.total_points);
+            const tierNum = currentTier(entry.total_points);
+            const tierBadge = tierByNumber.get(tierNum);
             const skoolUrl = entry.skool_handle ? `https://www.skool.com/@${entry.skool_handle}` : null;
             return (
               <li key={entry.id}>
@@ -244,8 +271,9 @@ function RoadmapSection({
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-ink truncate">{name}</span>
+                      {tierBadge && <BadgeChip badge={tierBadge} locale={locale} />}
                       {isMe && (
                         <span className="px-1.5 py-0.5 rounded text-[10px] bg-accent text-white font-bold uppercase tracking-wide">
                           {t.leaderboard.you}
@@ -255,7 +283,6 @@ function RoadmapSection({
                     {entry.skool_handle && (
                       <div className="text-xs text-ink-dim font-mono truncate">@{entry.skool_handle}</div>
                     )}
-                    <div className="text-xs text-ink-dim">Lv.{level} · {tenureLabel(entry.tenure)}</div>
                   </div>
                   <div className="text-right">
                     <div className="font-mono font-bold text-ink">{entry.total_points.toLocaleString()}</div>
