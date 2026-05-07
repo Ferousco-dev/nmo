@@ -143,6 +143,7 @@ export const t = {
     title: '家族樹',
     subtitle: '認識 NMO 的領導團隊與地區指揮官。',
     contact: '聯絡',
+    messageOnSkool: '在 Skool 上發訊息',
   },
   redeem: {
     title: '兌換活動代碼',

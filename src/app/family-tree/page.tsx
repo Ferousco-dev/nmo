@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { Mail, MapPin } from 'lucide-react';
+import { Mail, MapPin, MessageSquare } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { TopNav } from '@/components/TopNav';
 import { getT } from '@/lib/i18n/server';
@@ -104,15 +104,28 @@ function MemberCard({ member }: { member: FamilyTreeMember }) {
         <p className="text-sm text-ink-muted leading-relaxed mb-3">{member.bio}</p>
       )}
 
-      {member.contact_email && (
-        <a
-          href={`mailto:${member.contact_email}`}
-          className="inline-flex items-center gap-1.5 text-xs text-ink-muted hover:text-accent transition-colors font-medium"
-        >
-          <Mail className="h-3.5 w-3.5" />
-          {t.familyTree.contact}
-        </a>
-      )}
+      <div className="flex items-center gap-3 flex-wrap">
+        {member.skool_handle && (
+          <a
+            href={`https://www.skool.com/@${member.skool_handle}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-2.5 h-8 rounded-md border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 transition-colors text-xs font-medium"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            {t.familyTree.messageOnSkool}
+          </a>
+        )}
+        {member.contact_email && (
+          <a
+            href={`mailto:${member.contact_email}`}
+            className="inline-flex items-center gap-1.5 text-xs text-ink-muted hover:text-accent transition-colors font-medium"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            {t.familyTree.contact}
+          </a>
+        )}
+      </div>
     </div>
   );
 }

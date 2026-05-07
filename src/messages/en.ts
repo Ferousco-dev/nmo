@@ -149,6 +149,7 @@ export const t = {
     title: "Team",
     subtitle: "Meet the NMO leadership and regional commanders.",
     contact: "Contact",
+    messageOnSkool: "Message on Skool",
   },
   redeem: {
     title: "Redeem an event code",

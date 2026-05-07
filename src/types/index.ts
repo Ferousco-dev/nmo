@@ -85,6 +85,8 @@ export interface FamilyTreeMember {
   bio: string | null;
   parent_id: string | null;
   display_order: number;
+  /** Skool username (no @) — deep-links to https://www.skool.com/@<handle> */
+  skool_handle: string | null;
 }
 
 export interface EventCode {
