@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Flame, Map, Trophy, Users, Gift, User, LogOut, LayoutDashboard, Activity, Menu, X } from 'lucide-react';
+import { Flame, Map, Trophy, Users, Gift, User, LogOut, LayoutDashboard, Activity, Menu, X, ShieldCheck } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useT } from '@/lib/i18n/client';
 import { cn } from '@/lib/utils';
@@ -15,6 +15,24 @@ export function TopNav() {
   const router = useRouter();
   const supabase = createClient();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check admin status once on mount. Admin link is hidden until resolved
+  // to avoid a flash of the link for non-admins.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      const { data } = await supabase
+        .from('admin_users')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (!cancelled) setIsAdmin(!!data);
+    })();
+    return () => { cancelled = true; };
+  }, [supabase]);
 
   const NAV_ITEMS = [
     { href: '/dashboard', label: t.nav.dashboard, icon: LayoutDashboard },
@@ -24,6 +42,7 @@ export function TopNav() {
     { href: '/family-tree', label: t.nav.familyTree, icon: Users },
     { href: '/redeem', label: t.nav.redeem, icon: Gift },
     { href: '/profile', label: t.nav.profile, icon: User },
+    ...(isAdmin ? [{ href: '/admin', label: t.admin.nav, icon: ShieldCheck }] : []),
   ];
 
   const handleLogout = async () => {
