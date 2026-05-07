@@ -59,12 +59,13 @@ export function QuestionnaireClient() {
     }
 
     const derived = deriveDimensions(answers);
-    const track = assignTrack(derived.tenure, derived.goal, derived.intensity);
+    const track = assignTrack(derived.pathway, derived.goal, derived.intensity);
 
     const { error: pErr } = await supabase
       .from('profiles')
       .update({
-        tenure: derived.tenure,
+        pathway: derived.pathway,
+        tenure: derived.tenure, // legacy, still kept in sync
         goal: derived.goal,
         intensity: derived.intensity,
         track_assigned: track,
@@ -81,7 +82,7 @@ export function QuestionnaireClient() {
       .eq('user_id', user.id);
 
     if (!count) {
-      const roadmap = generateRoadmap(derived.tenure, derived.goal, derived.intensity);
+      const roadmap = generateRoadmap(derived.pathway, derived.goal, derived.intensity);
       const taskRows = roadmap.flatMap((day) =>
         day.tasks.map((task) => ({
           user_id: user.id,

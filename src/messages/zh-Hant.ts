@@ -167,6 +167,7 @@ export const t = {
     skoolUrl: 'Skool 個人檔案',
     skoolHandle: 'Skool 用戶名',
     membershipStatus: '社群驗證狀態',
+    pathway: '軌道',
     tenure: '資歷',
     goal: '事業目標',
     intensity: '投入強度',
@@ -181,6 +182,11 @@ export const t = {
       pending: '待社群核對',
       verified: '已驗證為 NMO 成員',
       rejected: '驗證失敗',
+    },
+    pathwayLabels: {
+      foundation: { label: '基礎期', desc: '建立基礎、釐清方向' },
+      growth: { label: '成長期', desc: '加速擴展、累積成果' },
+      scale: { label: '擴展期', desc: '系統化、穩定獲利' },
     },
   },
   activity: {

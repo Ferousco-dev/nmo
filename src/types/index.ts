@@ -1,4 +1,9 @@
 export type Tenure = 'warrior' | 'ninja' | 'wizard' | 'dragon';
+/**
+ * Pathway — the 3 possible roadmap outcomes per client brief.
+ * Replaces tenure as the primary signal for `track_assigned`.
+ */
+export type Pathway = 'foundation' | 'growth' | 'scale';
 export type Goal = 'agency' | 'saas' | 'content' | 'coaching';
 export type Intensity = 'easy' | 'pro';
 
@@ -15,6 +20,7 @@ export interface Profile {
   skool_verified_at: string | null;
   skool_membership_status: SkoolMembershipStatus;
   tenure: Tenure | null;
+  pathway: Pathway | null;
   goal: Goal | null;
   intensity: Intensity | null;
   track_assigned: string | null;

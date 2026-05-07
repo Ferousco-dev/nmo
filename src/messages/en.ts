@@ -173,6 +173,7 @@ export const t = {
     skoolUrl: "Skool profile",
     skoolHandle: "Skool username",
     membershipStatus: "Community verification",
+    pathway: "Pathway",
     tenure: "Tenure",
     goal: "Business goal",
     intensity: "Intensity",
@@ -187,6 +188,11 @@ export const t = {
       pending: "Pending review",
       verified: "Verified NMO member",
       rejected: "Verification failed",
+    },
+    pathwayLabels: {
+      foundation: { label: 'Foundation', desc: 'Building the basics, finding direction' },
+      growth: { label: 'Growth', desc: 'Accelerating, stacking wins' },
+      scale: { label: 'Scale', desc: 'Systemising, steady revenue' },
     },
   },
   activity: {

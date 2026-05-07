@@ -5,6 +5,7 @@ import {
   Sword, Shield, Wand2, Crown,
   Building2, Code2, Video, GraduationCap,
   Sprout, Rocket,
+  Compass, TrendingUp, Award,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
@@ -12,7 +13,7 @@ import { TopNav } from '@/components/TopNav';
 import { TRACK_NAMES_ZH } from '@/lib/roadmap/generator';
 import { calculateLevel, cn } from '@/lib/utils';
 import { getT } from '@/lib/i18n/server';
-import type { SkoolMembershipStatus } from '@/types';
+import type { Pathway, SkoolMembershipStatus } from '@/types';
 
 export default async function ProfilePage() {
   const t = getT();
@@ -43,6 +44,11 @@ export default async function ProfilePage() {
   const intensityIcons: Record<string, LucideIcon> = {
     easy: Sprout,
     pro: Rocket,
+  };
+  const pathwayIcons: Record<Pathway, LucideIcon> = {
+    foundation: Compass,
+    growth: TrendingUp,
+    scale: Award,
   };
 
   const level = calculateLevel(profile.total_points);
@@ -124,6 +130,18 @@ export default async function ProfilePage() {
         <div className="card-premium p-8">
           <h3 className="font-display text-xl font-bold mb-5">問卷答案</h3>
           <dl className="space-y-4">
+            {profile.pathway && (
+              <ProfileRow
+                label={t.profile.pathway}
+                value={
+                  <IconLabel
+                    Icon={pathwayIcons[profile.pathway as Pathway]}
+                    text={t.profile.pathwayLabels[profile.pathway as Pathway].label}
+                  />
+                }
+                highlight
+              />
+            )}
             <ProfileRow
               label={t.profile.tenure}
               value={
