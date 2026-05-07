@@ -50,16 +50,6 @@ export default async function RoadmapPage() {
     tasksByDay.get(task.day_number)?.push(task);
   }
 
-  // Find current day to auto-open
-  let currentDay = 1;
-  for (let d = 1; d <= 30; d++) {
-    const dayTasks = tasksByDay.get(d) || [];
-    if (dayTasks.length > 0 && dayTasks.some((t) => !t.is_completed)) {
-      currentDay = d;
-      break;
-    }
-  }
-
   const trackLabel = profile.track_assigned ? TRACK_NAMES_ZH[profile.track_assigned] : '';
   const totalCompleted = allTasks.filter((t) => t.is_completed).length;
   const totalTasks = allTasks.length;
@@ -98,6 +88,12 @@ export default async function RoadmapPage() {
             );
             const weekDone = weekTasks.filter((task) => task.is_completed).length;
 
+            // Locked iff: not the first day AND prev day has any incomplete tasks
+            const prevDayTasks = tasksByDay.get(day - 1) || [];
+            const isLocked =
+              day > 1 &&
+              (prevDayTasks.length === 0 || prevDayTasks.some((task) => !task.is_completed));
+
             return (
               <Fragment key={day}>
                 {isWeekStart && (
@@ -108,11 +104,7 @@ export default async function RoadmapPage() {
                     total={weekTasks.length}
                   />
                 )}
-                <DayCard
-                  day={day}
-                  tasks={dayTasks}
-                  defaultOpen={day === currentDay}
-                />
+                <DayCard day={day} tasks={dayTasks} locked={isLocked} />
               </Fragment>
             );
           })}

@@ -110,6 +110,17 @@ export const t = {
     markIncomplete: '取消完成',
     weeks: ['第一週 · 啟動', '第二週 · 加速', '第三週 · 突破', '第四週 · 鞏固', '最後衝刺'],
     weekProgress: '本週進度',
+    // Day detail page
+    dailyNonNegotiable: '今日不可妥協',
+    todayActions: '今日行動',
+    wisdom: '當日心法',
+    backToRoadmap: '回到地圖',
+    prevDay: '前一天',
+    nextDay: '下一天',
+    locked: '尚未解鎖',
+    lockedHint: '完成第 {prev} 天後解鎖。',
+    allDoneCelebration: '今日全部完成！',
+    progressLabel: '今日進度 {completed}/{total}',
   },
   leaderboard: {
     title: '排行榜',

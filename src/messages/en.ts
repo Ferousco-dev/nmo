@@ -116,6 +116,17 @@ export const t = {
       "Final stretch",
     ],
     weekProgress: "Week progress",
+    // Day detail page
+    dailyNonNegotiable: "Daily non-negotiable",
+    todayActions: "Today's actions",
+    wisdom: "Wisdom",
+    backToRoadmap: "Back to roadmap",
+    prevDay: "Previous day",
+    nextDay: "Next day",
+    locked: "Locked",
+    lockedHint: "Unlocks once you finish Day {prev}.",
+    allDoneCelebration: "Today is fully done!",
+    progressLabel: "Today {completed}/{total}",
   },
   leaderboard: {
     title: "Leaderboard",
