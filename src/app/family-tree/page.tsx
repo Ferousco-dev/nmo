@@ -16,15 +16,72 @@ export default async function FamilyTreePage() {
     .select('*')
     .order('display_order', { ascending: true });
 
-  const all = (members || []) as FamilyTreeMember[];
+  const rawAll = (members || []) as FamilyTreeMember[];
 
-  // Group by role tier
-  const tiers = [
+  // For every row that points at a Skool handle, pull the freshest
+  // display_name + avatar from nmo_members. That table is rewritten
+  // every day by the Apify cron, so the family tree mirrors live
+  // Skool data without anyone touching family_tree again.
+  const handles = rawAll
+    .map((m) => m.skool_handle)
+    .filter((h): h is string => typeof h === 'string' && h.length > 0);
+
+  let liveByHandle = new Map<string, { display_name: string | null; avatar_url: string | null; profile_url: string | null }>();
+  if (handles.length > 0) {
+    const { data: live } = await supabase
+      .from('nmo_members')
+      .select('handle, display_name, avatar_url, profile_url')
+      .in('handle', handles);
+    if (live) {
+      liveByHandle = new Map(
+        live.map((row: { handle: string; display_name: string | null; avatar_url: string | null; profile_url: string | null }) => [
+          row.handle,
+          { display_name: row.display_name, avatar_url: row.avatar_url, profile_url: row.profile_url },
+        ])
+      );
+    }
+  }
+
+  const all: FamilyTreeMember[] = rawAll.map((m) => {
+    if (!m.skool_handle) return m;
+    const fresh = liveByHandle.get(m.skool_handle);
+    if (!fresh) return m;
+    return {
+      ...m,
+      name: fresh.display_name ?? m.name,
+      photo_url: fresh.avatar_url ?? m.photo_url,
+    };
+  });
+
+  // Group by role tier. Anything that doesn't match a known tier
+  // (a custom role typed in /admin/family-tree, for example) falls
+  // through to the final catch-all so it always renders.
+  const knownTiers: { label: string; roles: string[] }[] = [
     { label: '創辦人', roles: ['CEO / Founder', 'Founder', 'CEO'] },
     { label: '核心領導層', roles: ['COO', 'CMO', 'CSMO'] },
     { label: '地區指揮官', roles: ['Regional Commander'] },
     { label: '分區指揮官', roles: ['Subregional Commander'] },
+    { label: '管理員', roles: ['Admin', 'Moderator'] },
   ];
+
+  const knownRoleSet = new Set(knownTiers.flatMap((t) => t.roles));
+  const otherMembers = all.filter((m) => !knownRoleSet.has(m.role));
+  // Group "other" rows by their role text so each custom role gets
+  // its own section (avoids dumping everything into one bucket).
+  const otherByRole = new Map<string, FamilyTreeMember[]>();
+  for (const m of otherMembers) {
+    const list = otherByRole.get(m.role) ?? [];
+    list.push(m);
+    otherByRole.set(m.role, list);
+  }
+  const tiers = [
+    ...knownTiers,
+    ...Array.from(otherByRole.entries()).map(([role, ms]) => ({
+      label: role,
+      roles: [role],
+      _preFiltered: ms,
+    })),
+  ] as Array<{ label: string; roles: string[]; _preFiltered?: FamilyTreeMember[] }>;
 
   return (
     <div className="min-h-screen">
@@ -39,7 +96,7 @@ export default async function FamilyTreePage() {
 
         <div className="space-y-10">
           {tiers.map((tier) => {
-            const tierMembers = all.filter((m) => tier.roles.includes(m.role));
+            const tierMembers = tier._preFiltered ?? all.filter((m) => tier.roles.includes(m.role));
             if (tierMembers.length === 0) return null;
 
             return (

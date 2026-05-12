@@ -44,7 +44,7 @@ async function exactHandle(rawHandle: string) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('nmo_members')
-    .select('handle, display_name, avatar_url, level, last_seen_at')
+    .select('handle, display_name, avatar_url, level, profile_url, last_seen_at')
     .eq('handle', handle)
     .maybeSingle();
   if (error) {
@@ -60,6 +60,7 @@ async function exactHandle(rawHandle: string) {
     displayName: data.display_name,
     avatarUrl: data.avatar_url,
     level: data.level,
+    profileUrl: data.profile_url ?? `https://www.skool.com/@${data.handle}`,
     lastSeenAt: data.last_seen_at,
   });
 }
@@ -77,7 +78,7 @@ async function liveSearch(rawQ: string) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('nmo_members')
-    .select('handle, display_name, avatar_url, level')
+    .select('handle, display_name, avatar_url, level, profile_url')
     .or(`display_name.ilike.${pattern},handle.ilike.${pattern}`)
     .order('level', { ascending: false, nullsFirst: false })
     .limit(MAX_RESULTS);
@@ -93,6 +94,7 @@ async function liveSearch(rawQ: string) {
       displayName: m.display_name,
       avatarUrl: m.avatar_url,
       level: m.level,
+      profileUrl: m.profile_url ?? `https://www.skool.com/@${m.handle}`,
     })),
   });
 }

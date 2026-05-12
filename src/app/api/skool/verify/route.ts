@@ -169,6 +169,7 @@ export async function POST(req: Request) {
     handle: result.handle,
     displayName: result.displayName,
     avatarUrl: result.avatarUrl,
+    profileUrl: `https://www.skool.com/@${result.handle}`,
     membershipStatus: result.membershipStatus,
     emailMatch,
   });

@@ -51,7 +51,38 @@ Copy `.env.example` to `.env.local` and fill in:
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 NEXT_PUBLIC_SKOOL_COMMUNITY_URL=https://www.skool.com/nmo
+
+# Server-only — required for the daily Skool member sync (Vercel Cron → Apify)
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+APIFY_TOKEN=apify_api_xxx
+SKOOL_COMMUNITY_SLUG=nmo
+SKOOL_SESSION_COOKIE=__Secure-next-auth.session-token=...; other-cookie=...
+TRIGGER_SECRET=any-long-random-string   # POST x-trigger-secret to run on demand
+# CRON_SECRET is set automatically by Vercel when you enable Cron Jobs
 ```
+
+### Daily Skool member sync
+
+The cron lives in `vercel.json` and runs `/api/cron/sync-skool-members`
+every day at **19:00 UTC (20:00 West Africa Time)**. It calls the Apify
+`cheerio-scraper` actor against `https://www.skool.com/<slug>/-/members`,
+extracts every user-shaped object out of `__NEXT_DATA__`, and upserts
+into `nmo_members` (handle, display_name, avatar_url, level, profile_url).
+
+Before the first run:
+
+1. Apply `supabase/migrations_apify_sync.sql` in the Supabase SQL editor
+   (adds the `profile_url` column).
+2. In Vercel, set the env vars above. `SKOOL_SESSION_COOKIE` is the full
+   `cookie:` header from a logged-in browser; without it the scrape only
+   sees the public members view.
+3. Enable Cron Jobs in the Vercel project. `CRON_SECRET` is auto-injected.
+4. Manual trigger for testing:
+   ```bash
+   curl -X POST https://<your-app>.vercel.app/api/cron/sync-skool-members \
+     -H "x-trigger-secret: $TRIGGER_SECRET"
+   ```
+   Audit trail lives in `public.bot_runs` (newest first).
 
 ### 4. Run dev server
 
