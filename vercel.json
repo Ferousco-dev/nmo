@@ -1,0 +1,13 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/sync-skool-members",
+      "schedule": "0 19 * * *"
+    }
+  ],
+  "functions": {
+    "src/app/api/cron/sync-skool-members/route.ts": {
+      "maxDuration": 300
+    }
+  }
+}

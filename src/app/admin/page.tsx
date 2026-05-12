@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Users, Ticket, ScrollText, ArrowRight } from 'lucide-react';
+import { Users, Ticket, ScrollText, ArrowRight, Network } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { TopNav } from '@/components/TopNav';
 import { getT } from '@/lib/i18n/server';
@@ -11,9 +11,15 @@ export default async function AdminOverviewPage() {
   const supabase = createClient();
 
   // Quick counts for the overview cards
-  const [{ count: memberCount }, { count: codeCount }, { data: recentActions }] = await Promise.all([
+  const [
+    { count: memberCount },
+    { count: codeCount },
+    { count: familyTreeCount },
+    { data: recentActions },
+  ] = await Promise.all([
     supabase.from('profiles').select('id', { count: 'exact', head: true }),
     supabase.from('event_codes').select('code', { count: 'exact', head: true }).eq('is_active', true),
+    supabase.from('family_tree').select('id', { count: 'exact', head: true }),
     supabase
       .from('admin_actions')
       .select('id, action_type, target_user_id, payload, created_at, admin_id')
@@ -24,6 +30,13 @@ export default async function AdminOverviewPage() {
   const cards = [
     { href: '/admin/members', icon: Users, count: memberCount ?? 0, ...t.admin.cards.members },
     { href: '/admin/codes', icon: Ticket, count: codeCount ?? 0, ...t.admin.cards.codes },
+    {
+      href: '/admin/family-tree',
+      icon: Network,
+      count: familyTreeCount ?? 0,
+      title: '家族樹管理',
+      desc: '搜尋 Skool 用戶並加入家族樹',
+    },
   ];
 
   return (
@@ -41,7 +54,7 @@ export default async function AdminOverviewPage() {
         </div>
 
         {/* Action cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           {cards.map((c) => {
             const Icon = c.icon;
             return (
