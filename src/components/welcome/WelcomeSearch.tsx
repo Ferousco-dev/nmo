@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Flame, Search, Trophy, ChevronRight, ExternalLink, ShieldAlert } from 'lucide-react';
+import { Search, Trophy, ChevronRight, ExternalLink, ShieldAlert } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { Logo } from '@/components/Logo';
 import { useT } from '@/lib/i18n/client';
 import { cn } from '@/lib/utils';
 
@@ -80,12 +82,15 @@ export function WelcomeSearch({
       <header className="fixed top-0 left-0 right-0 z-30 backdrop-blur-xl bg-bg/70 border-b border-line/60">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2 min-w-0">
-            <Flame className="h-6 w-6 text-accent shrink-0" strokeWidth={2.5} />
+            <Logo size={28} className="shrink-0" priority />
             <span className="font-display text-lg sm:text-xl font-bold tracking-tight truncate">
               NMO <span className="gradient-text">Roadmap</span>
             </span>
           </Link>
-          <LanguageSwitcher />
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <ThemeToggle />
+            <LanguageSwitcher />
+          </div>
         </div>
       </header>
 
@@ -99,8 +104,8 @@ export function WelcomeSearch({
         <div className="w-full max-w-md animate-slide-up">
           {/* Header */}
           <div className="text-center mb-7">
-            <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-accent/10 border border-accent/30 mb-5 glow-blue">
-              <Flame className="h-8 w-8 text-accent" strokeWidth={2.5} />
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl overflow-hidden border border-accent/30 mb-5 glow-blue">
+              <Logo size={64} priority />
             </div>
             <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
               <span className="gradient-text">{t.welcome.title}</span>
@@ -112,8 +117,12 @@ export function WelcomeSearch({
           <div className="card-premium overflow-hidden">
             {/* Search input */}
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-ink-dim pointer-events-none" />
+              <label htmlFor="welcome-search" className="sr-only">
+                {t.welcome.searchPlaceholder}
+              </label>
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-ink-dim pointer-events-none" aria-hidden />
               <input
+                id="welcome-search"
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -124,7 +133,11 @@ export function WelcomeSearch({
                 spellCheck={false}
               />
               {searching && (
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+                <div
+                  role="status"
+                  aria-label={t.welcome.searching}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent"
+                />
               )}
             </div>
 
@@ -138,6 +151,8 @@ export function WelcomeSearch({
                         key={i}
                         src={url}
                         alt=""
+                        loading="lazy"
+                        decoding="async"
                         className={cn(
                           'h-9 w-9 rounded-full object-cover border-2 border-bg-card transition-transform hover:scale-110 hover:z-20',
                           i > 0 && '-ml-2'
@@ -192,6 +207,8 @@ export function WelcomeSearch({
                         <img
                           src={r.avatarUrl}
                           alt=""
+                          loading="lazy"
+                          decoding="async"
                           className="h-11 w-11 rounded-full object-cover shrink-0 ring-2 ring-transparent group-hover:ring-accent/40 transition-all"
                         />
                       ) : (

@@ -18,6 +18,15 @@ import type { Tenure, Goal, Intensity } from '@/types';
 
 const TOTAL_STEPS = 3;
 
+// PostgreSQL unique-violation: SQLSTATE 23505. Surfaces from supabase-js
+// either as `error.code === '23505'` or with a message containing
+// "duplicate key" / "already exists" depending on the version.
+function isDuplicateKeyError(err: { code?: string; message?: string } | null): boolean {
+  if (!err) return false;
+  if (err.code === '23505') return true;
+  return /duplicate key|already exists/i.test(err.message ?? '');
+}
+
 export function OnboardingClient() {
   const t = useT();
   const router = useRouter();
@@ -60,16 +69,23 @@ export function OnboardingClient() {
 
     const track = assignTrack(tenure, goal, intensity);
 
+    // Upsert (not update) so we self-heal when the on_auth_user_created
+    // trigger never fired and the profile row is missing — the task
+    // insert below would otherwise 23503 on the FK to profiles(id).
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({
-        tenure,
-        goal,
-        intensity,
-        track_assigned: track,
-        onboarding_completed: true,
-      })
-      .eq('id', user.id);
+      .upsert(
+        {
+          id: user.id,
+          email: user.email,
+          tenure,
+          goal,
+          intensity,
+          track_assigned: track,
+          onboarding_completed: true,
+        },
+        { onConflict: 'id' }
+      );
 
     if (profileError) {
       setError(profileError.message);
@@ -89,15 +105,23 @@ export function OnboardingClient() {
       }))
     );
 
-    const { error: tasksError } = await supabase.from('user_tasks').insert(taskRows);
+    // Upsert idempotently. The unique(user_id, task_id) constraint means
+    // re-running this flow (or running both /onboarding and /questionnaire)
+    // hits 23505 on rows that are already there — which is functionally
+    // fine, so we swallow that specific error and let real failures surface.
+    const { error: tasksError } = await supabase
+      .from('user_tasks')
+      .upsert(taskRows, { onConflict: 'user_id,task_id', ignoreDuplicates: true });
 
-    if (tasksError) {
+    if (tasksError && !isDuplicateKeyError(tasksError)) {
       setError(tasksError.message);
       setLoading(false);
       return;
     }
 
-    router.push('/dashboard');
+    // Drop new users straight onto their 30-day roadmap (where Day 1 is
+    // the only thing unlocked) so the very next step is obvious.
+    router.push('/roadmap');
     router.refresh();
   };
 

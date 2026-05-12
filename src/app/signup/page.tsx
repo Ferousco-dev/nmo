@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Flame, CheckCircle2, ShieldAlert, ShieldCheck, ArrowLeft, Check } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, ShieldCheck, ArrowLeft, Check } from 'lucide-react';
 import { Confetti } from '@/components/Confetti';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { Logo } from '@/components/Logo';
 import { useT } from '@/lib/i18n/client';
 
 const HANDLE_REGEX = /^[a-zA-Z0-9_-]{2,40}$/;
@@ -181,7 +183,7 @@ export default function SignupPage() {
             {/* Identity chip */}
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-bg-raised border border-line">
               {prefilled.avatarUrl ? (
-                <img src={prefilled.avatarUrl} alt="" className="h-6 w-6 rounded-full object-cover" />
+                <img src={prefilled.avatarUrl} alt="" decoding="async" className="h-6 w-6 rounded-full object-cover" />
               ) : (
                 <div className="h-6 w-6 rounded-full bg-bg-card border border-line flex items-center justify-center text-[10px] font-mono text-ink-muted">
                   {prefilled.handle.slice(0, 2).toUpperCase()}
@@ -202,14 +204,17 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
       <div className="absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-accent/10 blur-[120px]" />
       </div>
 
       <div className="w-full max-w-md animate-slide-up">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-accent/10 border border-accent/30 mb-4 glow-blue">
-            <Flame className="h-8 w-8 text-accent" strokeWidth={2.5} />
+          <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl overflow-hidden border border-accent/30 mb-4 glow-blue">
+            <Logo size={64} priority />
           </div>
           <h1 className="font-display text-4xl font-bold tracking-tight">
             <span className="gradient-text">{t.auth.signupTitle}</span>
@@ -223,6 +228,7 @@ export default function SignupPage() {
             <img
               src={prefilled.avatarUrl}
               alt=""
+              decoding="async"
               className="h-12 w-12 rounded-full object-cover"
             />
           ) : (

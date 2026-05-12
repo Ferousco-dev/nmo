@@ -1,9 +1,11 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, ArrowLeft, Flame, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getT } from '@/lib/i18n/server';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { Logo } from '@/components/Logo';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,12 +53,15 @@ export default async function ConfirmPage({
       <header className="fixed top-0 left-0 right-0 z-30 backdrop-blur-xl bg-bg/70 border-b border-line/60">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2 min-w-0">
-            <Flame className="h-6 w-6 text-accent shrink-0" strokeWidth={2.5} />
+            <Logo size={28} className="shrink-0" priority />
             <span className="font-display text-lg sm:text-xl font-bold tracking-tight truncate">
               NMO <span className="gradient-text">Roadmap</span>
             </span>
           </Link>
-          <LanguageSwitcher />
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <ThemeToggle />
+            <LanguageSwitcher />
+          </div>
         </div>
       </header>
 
@@ -74,6 +79,7 @@ export default async function ConfirmPage({
                 <img
                   src={member.avatar_url}
                   alt={member.display_name || `@${member.handle}`}
+                  decoding="async"
                   className="h-32 w-32 sm:h-36 sm:w-36 rounded-full object-cover border-4 border-accent/40 glow-blue"
                 />
               ) : (

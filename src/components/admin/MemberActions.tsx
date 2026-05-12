@@ -62,7 +62,7 @@ export function GrantPointsForm({ targetUserId }: { targetUserId: string }) {
           className="h-9 w-9 rounded-lg border border-line-strong bg-bg-raised text-ink-muted hover:text-success hover:border-success/50 flex items-center justify-center transition-colors"
           aria-label="Positive"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4" aria-hidden />
         </button>
         <button
           type="button"
@@ -70,9 +70,13 @@ export function GrantPointsForm({ targetUserId }: { targetUserId: string }) {
           className="h-9 w-9 rounded-lg border border-line-strong bg-bg-raised text-ink-muted hover:text-danger hover:border-danger/50 flex items-center justify-center transition-colors"
           aria-label="Negative"
         >
-          <Minus className="h-4 w-4" />
+          <Minus className="h-4 w-4" aria-hidden />
         </button>
+        <label htmlFor={`grant-points-${targetUserId}`} className="sr-only">
+          {t.admin.member.pointsLabel}
+        </label>
         <input
+          id={`grant-points-${targetUserId}`}
           type="number"
           inputMode="numeric"
           step="1"
@@ -83,13 +87,19 @@ export function GrantPointsForm({ targetUserId }: { targetUserId: string }) {
           required
         />
       </div>
-      <input
-        type="text"
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        placeholder={t.admin.member.reasonLabel}
-        className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
-      />
+      <div>
+        <label htmlFor={`grant-points-reason-${targetUserId}`} className="sr-only">
+          {t.admin.member.reasonLabel}
+        </label>
+        <input
+          id={`grant-points-reason-${targetUserId}`}
+          type="text"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder={t.admin.member.reasonLabel}
+          className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
+        />
+      </div>
       <div className="flex items-center justify-between gap-3">
         <button
           type="submit"
@@ -153,11 +163,15 @@ export function GrantBadgeForm({
   };
 
   return (
-    <form onSubmit={submit} className="flex items-center gap-2">
+    <form onSubmit={submit} className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+      <label htmlFor={`grant-badge-${targetUserId}`} className="sr-only">
+        {t.admin.member.grantBadge}
+      </label>
       <select
+        id={`grant-badge-${targetUserId}`}
         value={badgeKey}
         onChange={(e) => setBadgeKey(e.target.value)}
-        className="flex-1 h-11 px-3 rounded-lg bg-bg-raised border border-line-strong text-ink focus:outline-none focus:border-accent transition-colors"
+        className="flex-1 min-w-0 h-11 px-3 rounded-lg bg-bg-raised border border-line-strong text-ink focus:outline-none focus:border-accent transition-colors"
         required
       >
         <option value="">— {t.admin.member.grantBadge} —</option>

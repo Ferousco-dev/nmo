@@ -46,7 +46,7 @@ export function DayDetailClient({ tasks }: { tasks: UserTask[] }) {
   const allDone = tasks.length > 0 && tasks.every((task) => optimistic[task.task_id]);
 
   return (
-    <ul className="space-y-3">
+    <ul className="space-y-2.5 sm:space-y-3">
       {tasks.map((task, index) => {
         const isDone = optimistic[task.task_id];
         const pill = resourcePillLabel(index);
@@ -55,26 +55,34 @@ export function DayDetailClient({ tasks }: { tasks: UserTask[] }) {
           <li key={task.id} className="group">
             <div
               className={cn(
-                'flex items-start gap-3 p-4 rounded-xl border transition-all',
+                'flex items-start gap-3 p-3.5 sm:p-4 rounded-xl border transition-all',
                 isDone
                   ? 'bg-success/5 border-success/20'
                   : 'bg-bg-raised border-line hover:border-line-strong'
               )}
             >
-              {/* Checkbox */}
+              {/* Checkbox — wraps in a 44px tap target on mobile while keeping the visual control compact */}
               <button
                 type="button"
                 onClick={() => toggle(task)}
                 disabled={isPending}
                 aria-label={isDone ? t.roadmap.markIncomplete : t.roadmap.markComplete}
+                aria-pressed={isDone}
                 className={cn(
-                  'mt-0.5 h-6 w-6 rounded-md border-2 flex items-center justify-center transition-all shrink-0',
-                  isDone
-                    ? 'bg-success border-success'
-                    : 'border-line-strong hover:border-accent group-hover:border-accent/60'
+                  'shrink-0 -m-2 p-2 flex items-center justify-center',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg rounded-lg'
                 )}
               >
-                {isDone && <Check className="h-4 w-4 text-white" strokeWidth={3} />}
+                <span
+                  className={cn(
+                    'h-6 w-6 rounded-md border-2 flex items-center justify-center transition-all',
+                    isDone
+                      ? 'bg-success border-success'
+                      : 'border-line-strong group-hover:border-accent/60'
+                  )}
+                >
+                  {isDone && <Check className="h-4 w-4 text-white" strokeWidth={3} aria-hidden />}
+                </span>
               </button>
 
               {/* Body — text + resource pill underneath */}
@@ -103,13 +111,14 @@ export function DayDetailClient({ tasks }: { tasks: UserTask[] }) {
                     target="_blank"
                     rel="noopener noreferrer"
                     className={cn(
-                      'inline-flex items-center gap-1.5 mt-2.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors',
-                      'bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20'
+                      'inline-flex items-center gap-1.5 mt-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors max-w-full',
+                      'bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg'
                     )}
                   >
-                    <span aria-hidden>{pill.emoji}</span>
-                    <span>{pillLabel}</span>
-                    <ExternalLink className="h-3 w-3 opacity-70" />
+                    <span aria-hidden className="shrink-0">{pill.emoji}</span>
+                    <span className="truncate">{pillLabel}</span>
+                    <ExternalLink className="h-3 w-3 opacity-70 shrink-0" aria-hidden />
                   </a>
                 )}
               </div>
@@ -121,7 +130,7 @@ export function DayDetailClient({ tasks }: { tasks: UserTask[] }) {
       {allDone && (
         <li className="mt-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-success/30 bg-success/5 text-xs font-medium text-success animate-fade-in">
-            <Sparkles className="h-3.5 w-3.5" />
+            <Sparkles className="h-3.5 w-3.5" aria-hidden />
             {t.roadmap.allDoneCelebration}
           </div>
         </li>

@@ -6,24 +6,97 @@
 
 :root {
   color-scheme: dark;
+
+  /* Desktop sidebar width — 4rem collapsed, 16rem expanded.
+     TopNav updates this on toggle so the (app) layout's lg:pl-[var(--sidebar-w)]
+     animates the page content. */
+  --sidebar-w: 4rem;
+
+  /* ---------- Dark theme tokens (default) ---------- */
+  /* Tailwind's `rgb(var(--token) / <alpha-value>)` syntax requires the
+     channel triplet without commas, so each var below is "R G B". */
+  --bg: 9 9 11;            /* zinc-950 */
+  --bg-raised: 24 24 27;   /* zinc-900 */
+  --bg-card: 31 31 35;
+  --bg-hover: 39 39 42;    /* zinc-800 */
+
+  --line: 39 39 42;        /* zinc-800 */
+  --line-subtle: 31 31 35;
+  --line-strong: 63 63 70; /* zinc-700 */
+
+  --ink: 250 250 250;      /* zinc-50 */
+  --ink-muted: 161 161 170;/* zinc-400 */
+  --ink-dim: 113 113 122;  /* zinc-500 */
+  --ink-faint: 82 82 91;   /* zinc-600 */
+
+  --accent: 59 130 246;    /* electric blue */
+  --accent-hover: 37 99 235;
+  --accent-glow: 96 165 250;
+  --accent-dim: 30 58 138;
+
+  --success: 16 185 129;
+  --warn: 245 158 11;
+  --danger: 239 68 68;
+  --flame: 249 115 22;
+
+  /* Surface utilities — used by .card-premium / .glow-blue / scrollbar */
+  --grid-line: 63 63 70 / 0.07;
+  --card-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 24px rgba(0,0,0,0.4);
+  --skel-from: 63 63 70 / 0.18;
+  --skel-to: 63 63 70 / 0.4;
+}
+
+/* ---------- Light theme overrides ---------- */
+:root.light {
+  color-scheme: light;
+
+  --bg: 255 255 255;
+  --bg-raised: 250 250 250;  /* zinc-50 */
+  --bg-card: 244 244 245;    /* zinc-100 */
+  --bg-hover: 228 228 231;   /* zinc-200 */
+
+  --line: 228 228 231;       /* zinc-200 */
+  --line-subtle: 244 244 245;
+  --line-strong: 212 212 216;/* zinc-300 */
+
+  --ink: 24 24 27;           /* zinc-900 */
+  --ink-muted: 82 82 91;     /* zinc-600 */
+  --ink-dim: 113 113 122;    /* zinc-500 */
+  --ink-faint: 161 161 170;  /* zinc-400 */
+
+  --accent: 37 99 235;       /* blue-600 — slightly stronger on white */
+  --accent-hover: 29 78 216; /* blue-700 */
+  --accent-glow: 59 130 246; /* blue-500 */
+  --accent-dim: 191 219 254; /* blue-200 */
+
+  --success: 5 150 105;      /* emerald-600 */
+  --warn: 217 119 6;         /* amber-600 */
+  --danger: 220 38 38;       /* red-600 */
+  --flame: 234 88 12;        /* orange-600 */
+
+  --grid-line: 24 24 27 / 0.05;
+  --card-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 4px 14px rgba(0,0,0,0.05);
+  --skel-from: 161 161 170 / 0.18;
+  --skel-to: 161 161 170 / 0.35;
 }
 
 html, body {
-  background: #09090b;
-  color: #fafafa;
+  background: rgb(var(--bg));
+  color: rgb(var(--ink));
   font-family: 'Noto Sans TC', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
-/* Subtle grid background for dark premium feel */
+/* Subtle grid background — auto-adapts via --grid-line */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(63, 63, 70, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(63, 63, 70, 0.07) 1px, transparent 1px);
+    linear-gradient(rgb(var(--grid-line)) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--grid-line)) 1px, transparent 1px);
   background-size: 48px 48px;
   pointer-events: none;
   z-index: 0;
@@ -34,10 +107,10 @@ body > * {
   z-index: 1;
 }
 
-/* Selection */
+/* Selection — accent fill */
 ::selection {
-  background: #3b82f6;
-  color: #fafafa;
+  background: rgb(var(--accent));
+  color: rgb(var(--ink));
 }
 
 /* Scrollbar */
@@ -46,40 +119,40 @@ body > * {
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #09090b;
+  background: rgb(var(--bg));
 }
 ::-webkit-scrollbar-thumb {
-  background: #27272a;
+  background: rgb(var(--line));
   border-radius: 5px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: rgb(var(--line-strong));
 }
 
 /* Focus ring */
 *:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid rgb(var(--accent));
   outline-offset: 2px;
 }
 
 /* Reusable card with subtle glow */
 .card-premium {
-  background: linear-gradient(180deg, #1f1f23 0%, #18181b 100%);
-  border: 1px solid #27272a;
+  background: linear-gradient(180deg, rgb(var(--bg-card)) 0%, rgb(var(--bg-raised)) 100%);
+  border: 1px solid rgb(var(--line));
   border-radius: 12px;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 24px rgba(0,0,0,0.4);
+  box-shadow: var(--card-shadow);
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%);
+  background: linear-gradient(135deg, rgb(var(--accent-glow)) 0%, rgb(var(--accent)) 50%, rgb(var(--accent-hover)) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .glow-blue {
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3),
-              0 0 24px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 0 0 1px rgb(var(--accent) / 0.3),
+              0 0 24px rgb(var(--accent) / 0.25);
 }
 
 /* Display font.
@@ -98,9 +171,9 @@ body > * {
 .skeleton {
   background: linear-gradient(
     90deg,
-    rgba(63, 63, 70, 0.18) 0%,
-    rgba(63, 63, 70, 0.4) 50%,
-    rgba(63, 63, 70, 0.18) 100%
+    rgb(var(--skel-from)) 0%,
+    rgb(var(--skel-to)) 50%,
+    rgb(var(--skel-from)) 100%
   );
   background-size: 200% 100%;
   animation: skeletonShimmer 1.4s linear infinite;

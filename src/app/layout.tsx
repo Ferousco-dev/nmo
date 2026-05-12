@@ -9,14 +9,27 @@ export const metadata: Metadata = {
   description: '為 NMO 社群成員打造的個人化 30 天成功地圖',
 };
 
+// Inline pre-paint script that reads the saved theme out of localStorage
+// and applies the matching class to <html> before React hydrates. Without
+// this the user sees a flash of the default (dark) theme on every page
+// load if they've selected light. Synchronous + tiny so the cost is
+// negligible vs. the flicker cost.
+const themeBootstrap = `
+try {
+  var t = localStorage.getItem('nmo:theme');
+  if (t === 'light') document.documentElement.classList.add('light');
+} catch {}
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = getLocale();
   const messages = getMessages(locale);
 
   return (
-    <html lang={locale} className="dark" translate="no" suppressHydrationWarning>
+    <html lang={locale} translate="no" suppressHydrationWarning>
       <head>
         <meta name="google" content="notranslate" />
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
       <body suppressHydrationWarning>
         <I18nProvider locale={locale} messages={messages}>

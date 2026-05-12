@@ -139,20 +139,57 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: 'invalid_handle' }, { status: 400 });
   }
 
-  const result = await fetchSkoolProfile(handle);
-  if (!result.success) {
-    return NextResponse.json(result, { status: 422 });
+  // PRIMARY SOURCE: our own nmo_members table. The bot scrapes the
+  // community on a schedule and stores handle/display_name/avatar_url
+  // for everyone. The user reached this endpoint only by picking
+  // themselves from search results that read this exact table — so
+  // they're guaranteed to be there.
+  const { data: cached } = await supabase
+    .from('nmo_members')
+    .select('handle, display_name, avatar_url')
+    .eq('handle', handle)
+    .maybeSingle();
+
+  let displayName: string | null = cached?.display_name ?? null;
+  let avatarUrl: string | null = cached?.avatar_url ?? null;
+  // If they're in nmo_members, the bot has confirmed they're in the
+  // NMO community — mark verified up front. Live scrape can downgrade
+  // back to "pending" only if it actively contradicts.
+  let membershipStatus: 'pending' | 'verified' = cached ? 'verified' : 'pending';
+
+  // BONUS: best-effort live scrape to refresh stale fields (display
+  // name changes, new avatar, etc.). If Skool blocks us / serves a
+  // maintenance page / rate-limits, we still have cached data and
+  // proceed without failing the user's signup.
+  try {
+    const live = await fetchSkoolProfile(handle);
+    if (live.success) {
+      displayName = live.displayName ?? displayName;
+      avatarUrl = live.avatarUrl ?? avatarUrl;
+      // Live scrape's community check is authoritative when it runs
+      if (live.membershipStatus === 'verified') membershipStatus = 'verified';
+    }
+  } catch {
+    // Swallow — cached data is sufficient.
+  }
+
+  // Hard fail only if we have neither cached nor live data
+  if (!cached && !displayName && !avatarUrl) {
+    return NextResponse.json(
+      { success: false, error: 'profile_not_found' },
+      { status: 422 }
+    );
   }
 
   const emailMatch: EmailMatch = user.email
-    ? emailHandleMatch(user.email, result.handle, result.displayName)
+    ? emailHandleMatch(user.email, handle, displayName)
     : 'weak';
 
   const { data: rpcData, error: rpcError } = await supabase.rpc('claim_skool_handle', {
-    p_handle: result.handle,
-    p_display_name: result.displayName,
-    p_avatar_url: result.avatarUrl,
-    p_membership_status: result.membershipStatus,
+    p_handle: handle,
+    p_display_name: displayName,
+    p_avatar_url: avatarUrl,
+    p_membership_status: membershipStatus,
     p_email_match: emailMatch,
   });
 
@@ -166,10 +203,10 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     success: true,
-    handle: result.handle,
-    displayName: result.displayName,
-    avatarUrl: result.avatarUrl,
-    membershipStatus: result.membershipStatus,
+    handle,
+    displayName,
+    avatarUrl,
+    membershipStatus,
     emailMatch,
   });
 }

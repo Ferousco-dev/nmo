@@ -6,34 +6,38 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Dark Premium: Zinc base + Electric Blue accent
+        // All tokens point to CSS variables defined in globals.css. The
+        // `<alpha-value>` placeholder lets opacity modifiers (bg-bg/80,
+        // text-ink-muted/50, etc.) keep working — Tailwind substitutes
+        // the current alpha into the rgb() expression. Theme is switched
+        // by toggling the .light class on <html>.
         bg: {
-          DEFAULT: '#09090b',     // zinc-950
-          raised: '#18181b',      // zinc-900
-          card: '#1f1f23',
-          hover: '#27272a',       // zinc-800
+          DEFAULT: 'rgb(var(--bg) / <alpha-value>)',
+          raised: 'rgb(var(--bg-raised) / <alpha-value>)',
+          card: 'rgb(var(--bg-card) / <alpha-value>)',
+          hover: 'rgb(var(--bg-hover) / <alpha-value>)',
         },
         line: {
-          DEFAULT: '#27272a',     // zinc-800
-          subtle: '#1f1f23',
-          strong: '#3f3f46',      // zinc-700
+          DEFAULT: 'rgb(var(--line) / <alpha-value>)',
+          subtle: 'rgb(var(--line-subtle) / <alpha-value>)',
+          strong: 'rgb(var(--line-strong) / <alpha-value>)',
         },
         ink: {
-          DEFAULT: '#fafafa',     // zinc-50
-          muted: '#a1a1aa',       // zinc-400
-          dim: '#71717a',         // zinc-500
-          faint: '#52525b',       // zinc-600
+          DEFAULT: 'rgb(var(--ink) / <alpha-value>)',
+          muted: 'rgb(var(--ink-muted) / <alpha-value>)',
+          dim: 'rgb(var(--ink-dim) / <alpha-value>)',
+          faint: 'rgb(var(--ink-faint) / <alpha-value>)',
         },
         accent: {
-          DEFAULT: '#3b82f6',     // electric blue
-          hover: '#2563eb',
-          glow: '#60a5fa',
-          dim: '#1e3a8a',
+          DEFAULT: 'rgb(var(--accent) / <alpha-value>)',
+          hover: 'rgb(var(--accent-hover) / <alpha-value>)',
+          glow: 'rgb(var(--accent-glow) / <alpha-value>)',
+          dim: 'rgb(var(--accent-dim) / <alpha-value>)',
         },
-        success: '#10b981',
-        warn: '#f59e0b',
-        danger: '#ef4444',
-        flame: '#f97316',
+        success: 'rgb(var(--success) / <alpha-value>)',
+        warn: 'rgb(var(--warn) / <alpha-value>)',
+        danger: 'rgb(var(--danger) / <alpha-value>)',
+        flame: 'rgb(var(--flame) / <alpha-value>)',
       },
       fontFamily: {
         display: ['"Cormorant Garamond"', 'Georgia', 'serif'],
@@ -67,6 +71,13 @@ const config: Config = {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
       },
       backgroundSize: { 'grid-pattern': '40px 40px' },
+      // h-13 / w-13 / p-13 are referenced throughout (Button lg, confirm
+      // CTA, questionnaire submit). Tailwind has no 13 in its default
+      // spacing scale, so without this extension every "lg" button was
+      // silently collapsing to its natural height.
+      spacing: {
+        13: '3.25rem',
+      },
     },
   },
   plugins: [],

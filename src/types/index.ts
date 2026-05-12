@@ -6,6 +6,13 @@ export type Tenure = 'warrior' | 'ninja' | 'wizard' | 'dragon';
 export type Pathway = 'foundation' | 'growth' | 'scale';
 export type Goal = 'agency' | 'saas' | 'content' | 'coaching';
 export type Intensity = 'easy' | 'pro';
+/**
+ * Archetype — primary signal from the new 6-question questionnaire.
+ * One of four life-focus areas. Used directly on the result screen;
+ * legacy pathway/goal/intensity are derived from this for backward
+ * compatibility with the existing 30-day roadmap generator.
+ */
+export type Archetype = 'mind' | 'body' | 'money' | 'direction';
 
 export type SkoolMembershipStatus = 'unverified' | 'pending' | 'verified' | 'rejected';
 
@@ -23,6 +30,7 @@ export interface Profile {
   pathway: Pathway | null;
   goal: Goal | null;
   intensity: Intensity | null;
+  archetype: Archetype | null;
   track_assigned: string | null;
   total_points: number;
   current_level: number;

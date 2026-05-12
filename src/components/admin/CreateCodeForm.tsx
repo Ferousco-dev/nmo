@@ -53,52 +53,72 @@ export function CreateCodeForm() {
   return (
     <form onSubmit={submit} className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label htmlFor="create-code-code" className="sr-only">{t.admin.codes.codeLabel}</label>
+          <input
+            id="create-code-code"
+            type="text"
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            placeholder={t.admin.codes.codeLabel}
+            className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink font-mono uppercase tracking-widest placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
+            maxLength={20}
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="create-code-points" className="sr-only">{t.admin.codes.pointsLabel}</label>
+          <input
+            id="create-code-points"
+            type="number"
+            inputMode="numeric"
+            step="1"
+            min="1"
+            value={points}
+            onChange={(e) => setPoints(e.target.value)}
+            placeholder={t.admin.codes.pointsLabel}
+            className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
+            required
+          />
+        </div>
+      </div>
+      <div>
+        <label htmlFor="create-code-description" className="sr-only">{t.admin.codes.descriptionLabel}</label>
         <input
+          id="create-code-description"
           type="text"
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          placeholder={t.admin.codes.codeLabel}
-          className="h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink font-mono uppercase tracking-widest placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
-          maxLength={20}
-          required
-        />
-        <input
-          type="number"
-          inputMode="numeric"
-          step="1"
-          min="1"
-          value={points}
-          onChange={(e) => setPoints(e.target.value)}
-          placeholder={t.admin.codes.pointsLabel}
-          className="h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
-          required
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder={t.admin.codes.descriptionLabel}
+          className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
         />
       </div>
-      <input
-        type="text"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        placeholder={t.admin.codes.descriptionLabel}
-        className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
-      />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <input
-          type="number"
-          inputMode="numeric"
-          step="1"
-          min="1"
-          value={maxUses}
-          onChange={(e) => setMaxUses(e.target.value)}
-          placeholder={t.admin.codes.maxUsesLabel}
-          className="h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
-        />
-        <input
-          type="datetime-local"
-          value={expiresAt}
-          onChange={(e) => setExpiresAt(e.target.value)}
-          placeholder={t.admin.codes.expiresLabel}
-          className="h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
-        />
+        <div>
+          <label htmlFor="create-code-max-uses" className="sr-only">{t.admin.codes.maxUsesLabel}</label>
+          <input
+            id="create-code-max-uses"
+            type="number"
+            inputMode="numeric"
+            step="1"
+            min="1"
+            value={maxUses}
+            onChange={(e) => setMaxUses(e.target.value)}
+            placeholder={t.admin.codes.maxUsesLabel}
+            className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
+          />
+        </div>
+        <div>
+          <label htmlFor="create-code-expires" className="sr-only">{t.admin.codes.expiresLabel}</label>
+          <input
+            id="create-code-expires"
+            type="datetime-local"
+            value={expiresAt}
+            onChange={(e) => setExpiresAt(e.target.value)}
+            placeholder={t.admin.codes.expiresLabel}
+            className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
+          />
+        </div>
       </div>
       <div className="flex items-center justify-between gap-3">
         <button

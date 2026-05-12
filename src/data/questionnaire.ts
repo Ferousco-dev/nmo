@@ -1,12 +1,22 @@
-// Quick post-signup check-in. 5 substantive questions that map onto
-// pathway (3 outcomes) + goal + intensity, seeding a personalised
-// 30-day roadmap. Each question can have any number of options (2-4),
-// each with an emoji glyph + a short descriptor underneath the label.
+// 6-question archetype quiz. Every question has 4 options that each
+// vote on ONE of the four archetypes — mind / body / money / direction.
+// The plurality wins. Ties fall back to the first archetype hit.
 //
-// We also still vote on `tenure` for legacy compatibility — old UI
-// surfaces (family tree labels) read from it.
+// The new questionnaire is the primary signal for the user's roadmap
+// experience. The legacy (pathway, tenure, goal, intensity) columns
+// still exist on profiles because the existing 30-day roadmap
+// generator (lib/roadmap/generator.ts) reads them — so this file also
+// derives sensible defaults for those columns from the chosen
+// archetype. Treat the legacy mapping as INTERIM. Once archetype-
+// native roadmap content lands the four legacy fields can retire.
 
-import type { Tenure, Pathway, Goal, Intensity } from '@/types';
+import type {
+  Tenure,
+  Pathway,
+  Goal,
+  Intensity,
+  Archetype,
+} from '@/types';
 
 export interface QuestionOption {
   /** Emoji glyph rendered above the label */
@@ -16,13 +26,8 @@ export interface QuestionOption {
   zh: string;
   /** Sub-label / descriptor (one short phrase) */
   desc: { en: string; zh: string };
-  /** Optional dimension hint — pulls schema fields toward this value when chosen */
-  maps?: {
-    tenure?: Tenure;
-    pathway?: Pathway;
-    goal?: Goal;
-    intensity?: Intensity;
-  };
+  /** Which archetype this option votes on. Required on every option. */
+  archetype: Archetype;
 }
 
 export interface Question {
@@ -39,173 +44,218 @@ export interface Question {
 
 export const QUESTIONS: Question[] = [
   {
-    id: 'paying_customers',
-    emoji: '💼',
-    en: 'How many paying clients do you have?',
-    zh: '您有多少付費客戶？',
-    desc: {
-      en: 'Helps us pace the early weeks of your roadmap.',
-      zh: '幫助我們調整地圖前期的節奏。',
-    },
+    id: 'q1_change',
+    emoji: '🎯',
+    en: 'What do you most want to change about yourself right now?',
+    zh: '現在的你，最想改變的是哪一個問題？',
     options: [
       {
-        emoji: '👋',
-        en: 'Not yet',
-        zh: '還沒有',
-        desc: { en: 'Pre-revenue', zh: '尚未獲利' },
-        maps: { tenure: 'warrior', pathway: 'foundation' },
+        emoji: '🧠',
+        en: "My mind is easily distracted; I can't control my urges",
+        zh: '我的大腦很容易分心，控制不了慾望',
+        desc: { en: 'Mind & self-control', zh: '大腦與自制力' },
+        archetype: 'mind',
       },
       {
         emoji: '💪',
-        en: '1–2',
-        zh: '1–2 位',
-        desc: { en: 'Getting started', zh: '開始起步' },
-        maps: { tenure: 'ninja', pathway: 'growth' },
+        en: 'My body is weak; I have no energy',
+        zh: '我的身體狀態太差，沒有能量',
+        desc: { en: 'Body & energy', zh: '身體與能量' },
+        archetype: 'body',
+      },
+      {
+        emoji: '💰',
+        en: "I earn too little; I'm anxious about my future",
+        zh: '我賺的錢太少，對未來很焦慮',
+        desc: { en: 'Money & income', zh: '金錢與收入' },
+        archetype: 'money',
+      },
+      {
+        emoji: '🧭',
+        en: 'My life feels like it has no direction',
+        zh: '我感覺人生沒有方向感',
+        desc: { en: 'Direction & purpose', zh: '方向與目標' },
+        archetype: 'direction',
+      },
+    ],
+  },
+  {
+    id: 'q2_pain',
+    emoji: '🔥',
+    en: 'What is your biggest pain point right now?',
+    zh: '你現在最大的痛苦是什麼？',
+    options: [
+      {
+        emoji: '🚫',
+        en: "I keep returning to porn / masturbation, knowing I shouldn't",
+        zh: '明知道不該做，還是一直看A片／手淫',
+        desc: { en: 'Compulsion loop', zh: '無法停止的循環' },
+        archetype: 'mind',
+      },
+      {
+        emoji: '🪫',
+        en: 'No physical energy, easily exhausted',
+        zh: '沒有體能、沒有精神、容易累',
+        desc: { en: 'Body running on empty', zh: '身體耗盡' },
+        archetype: 'body',
+      },
+      {
+        emoji: '📉',
+        en: 'Income stuck, no sense of growth',
+        zh: '收入停滯，沒有成長感',
+        desc: { en: 'Career flatline', zh: '事業停滯' },
+        archetype: 'money',
+      },
+      {
+        emoji: '🌀',
+        en: "I procrastinate constantly and can't actually execute",
+        zh: '常常拖延，無法真正執行',
+        desc: { en: 'Stuck in the loop', zh: '陷入拖延' },
+        archetype: 'direction',
+      },
+    ],
+  },
+  {
+    id: 'q3_one_year',
+    emoji: '🌟',
+    en: 'A year from now, the version of you that has truly transformed — which one is it?',
+    zh: '如果一年後的你徹底蛻變了，你最希望是哪一種狀態？',
+    options: [
+      {
+        emoji: '🧘',
+        en: 'In complete control of my urges and impulses',
+        zh: '完全掌控自己的慾望與衝動',
+        desc: { en: 'Master of your mind', zh: '掌控自己的大腦' },
+        archetype: 'mind',
+      },
+      {
+        emoji: '🏋️',
+        en: 'A strong, disciplined, attractive body',
+        zh: '擁有強壯、自律、有吸引力的身體',
+        desc: { en: 'Built and sharp', zh: '強壯且敏捷' },
+        archetype: 'body',
       },
       {
         emoji: '🚀',
-        en: '3–5',
-        zh: '3–5 位',
-        desc: { en: 'Building', zh: '正在建立' },
-        maps: { tenure: 'wizard', pathway: 'scale' },
+        en: 'Income up sharply, my own business under way',
+        zh: '收入大幅提升，開始建立自己的事業',
+        desc: { en: 'Building real wealth', zh: '建立財富' },
+        archetype: 'money',
       },
       {
-        emoji: '⭐',
-        en: '5+',
-        zh: '5 位以上',
-        desc: { en: 'Growing', zh: '快速成長' },
-        maps: { tenure: 'wizard', pathway: 'scale' },
-      },
-    ],
-  },
-  {
-    id: 'built_for_client',
-    emoji: '🪄',
-    en: 'Have you built anything for a client?',
-    zh: '您曾為客戶建立任何東西嗎？',
-    options: [
-      {
-        emoji: '👀',
-        en: 'Not yet',
-        zh: '還沒有',
-        desc: { en: "Haven't built for anyone", zh: '尚未為他人建立' },
-        maps: { pathway: 'foundation' },
-      },
-      {
-        emoji: '🎁',
-        en: 'Yes, free',
-        zh: '有，免費的',
-        desc: { en: 'Built for free / no fee', zh: '免費或無收費建立' },
-        maps: { pathway: 'growth' },
-      },
-      {
-        emoji: '✅',
-        en: 'Yes, paid',
-        zh: '有,付費的',
-        desc: { en: 'Delivered & got paid', zh: '已交付並收費' },
-        maps: { pathway: 'scale' },
+        emoji: '👑',
+        en: 'A truly confident man with real presence',
+        zh: '成為一個真正有自信、有存在感的男人',
+        desc: { en: 'Owning every room', zh: '展現存在感' },
+        archetype: 'direction',
       },
     ],
   },
   {
-    id: 'product_or_service',
-    emoji: '🚀',
-    en: 'Do you have a product or service to sell?',
-    zh: '您有產品或服務可以販售嗎？',
-    desc: {
-      en: 'This decides whether week one focuses on niching down or selling.',
-      zh: '這決定第一週要找定位還是專注於銷售。',
-    },
+    id: 'q4_lacking',
+    emoji: '🪞',
+    en: 'What are you most lacking right now?',
+    zh: '你現在最缺乏的是什麼？',
     options: [
       {
-        emoji: '🤔',
-        en: 'Not yet',
-        zh: '還沒有',
-        desc: { en: 'Still figuring out what to sell', zh: '還在思考要賣什麼' },
-        maps: { pathway: 'foundation' },
+        emoji: '🧠',
+        en: 'Self-control',
+        zh: '自制力',
+        desc: { en: 'Mastering urges', zh: '掌控慾望' },
+        archetype: 'mind',
       },
       {
-        emoji: '💡',
-        en: 'I have an idea',
-        zh: '我有想法',
-        desc: { en: "Haven't packaged or tested it", zh: '尚未包裝或測試' },
-        maps: { pathway: 'growth' },
+        emoji: '⚙️',
+        en: 'Discipline',
+        zh: '紀律',
+        desc: { en: 'Consistent habits', zh: '穩定的習慣' },
+        archetype: 'body',
       },
       {
-        emoji: '✅',
-        en: 'Yes, clear offer',
-        zh: '有，明確方案',
-        desc: { en: "I know what I'm selling", zh: '我知道要賣什麼' },
-        maps: { pathway: 'scale' },
+        emoji: '💵',
+        en: 'Money and opportunity',
+        zh: '金錢與機會',
+        desc: { en: 'Resources & doors', zh: '資源與機會' },
+        archetype: 'money',
+      },
+      {
+        emoji: '⚡',
+        en: 'Action and follow-through',
+        zh: '行動力',
+        desc: { en: 'Doing, not thinking', zh: '行動而非空想' },
+        archetype: 'direction',
       },
     ],
   },
   {
-    id: 'business_kind',
-    emoji: '📚',
-    en: 'What kind of business are you building?',
-    zh: '您正在打造什麼類型的事業？',
-    desc: {
-      en: 'This tailors your roadmap to your specific business model.',
-      zh: '這會根據您的商業模式量身打造地圖。',
-    },
+    id: 'q5_waste_time',
+    emoji: '⏳',
+    en: 'Where do you waste the most time each day?',
+    zh: '你每天最容易浪費時間在哪裡？',
     options: [
       {
-        emoji: '🏢',
-        en: 'Service / Agency',
-        zh: '服務 / 代理',
-        desc: { en: 'Doing work for clients', zh: '為客戶提供服務' },
-        maps: { goal: 'agency' },
+        emoji: '📱',
+        en: 'Porn, short-form video, urge-driven content',
+        zh: '色情內容、短影音、慾望刺激',
+        desc: { en: 'Dopamine traps', zh: '多巴胺陷阱' },
+        archetype: 'mind',
       },
       {
-        emoji: '💻',
-        en: 'SaaS / Software',
-        zh: '軟體產品',
-        desc: { en: 'Building a product', zh: '打造產品' },
-        maps: { goal: 'saas' },
+        emoji: '🛋️',
+        en: 'Staying up late, slacking off, no exercise',
+        zh: '熬夜、耍廢、不運動',
+        desc: { en: 'Body neglect', zh: '忽略身體' },
+        archetype: 'body',
       },
       {
-        emoji: '🎬',
-        en: 'Content',
-        zh: '內容創作',
-        desc: { en: 'Audience-first business', zh: '以受眾為中心' },
-        maps: { goal: 'content' },
+        emoji: '📲',
+        en: 'Endlessly scrolling with no purpose',
+        zh: '漫無目的地滑手機',
+        desc: { en: 'Aimless scrolling', zh: '無意義滑動' },
+        archetype: 'money',
       },
       {
-        emoji: '🎓',
-        en: 'Coaching',
-        zh: '教練諮詢',
-        desc: { en: 'Teaching others to grow', zh: '指導他人成長' },
-        maps: { goal: 'coaching' },
+        emoji: '💭',
+        en: "Overthinking but never actually starting",
+        zh: '想很多，但沒有真正開始',
+        desc: { en: 'Stuck in your head', zh: '困在腦中' },
+        archetype: 'direction',
       },
     ],
   },
   {
-    id: 'time_commit',
-    emoji: '⏰',
-    en: 'How many hours can you commit each day?',
-    zh: '您每天可以投入多少時間？',
+    id: 'q6_focus',
+    emoji: '🎯',
+    en: 'If you could only focus on improving ONE thing for 30 days, which would it be?',
+    zh: '如果只能先專注提升一件事情 30 天，你會選哪一個？',
     options: [
       {
-        emoji: '🌱',
-        en: '1–2 hours',
-        zh: '1–2 小時',
-        desc: { en: 'Easy mode', zh: '輕量版' },
-        maps: { intensity: 'easy' },
+        emoji: '🚫',
+        en: 'Quit porn / masturbation, rewire my brain',
+        zh: '戒掉A片與手淫，重建大腦',
+        desc: { en: 'Reset the mind', zh: '重啟大腦' },
+        archetype: 'mind',
       },
       {
-        emoji: '💪',
-        en: '3–4 hours',
-        zh: '3–4 小時',
-        desc: { en: 'Steady', zh: '穩定推進' },
-        maps: { intensity: 'easy' },
+        emoji: '🏋️',
+        en: 'Build a stronger body and rhythm',
+        zh: '打造更強的身體與作息',
+        desc: { en: 'Forge the body', zh: '鍛造身體' },
+        archetype: 'body',
       },
       {
-        emoji: '🚀',
-        en: '5+ hours',
-        zh: '5 小時以上',
-        desc: { en: 'Pro mode', zh: '專業版' },
-        maps: { intensity: 'pro' },
+        emoji: '💼',
+        en: 'Boost income and business skills',
+        zh: '提升收入與事業能力',
+        desc: { en: 'Sharpen the craft', zh: '磨練本領' },
+        archetype: 'money',
+      },
+      {
+        emoji: '⚔️',
+        en: 'Build true masculine discipline',
+        zh: '建立真正的男性自律',
+        desc: { en: 'Discipline as identity', zh: '自律即身份' },
+        archetype: 'direction',
       },
     ],
   },
@@ -214,55 +264,56 @@ export const QUESTIONS: Question[] = [
 export const TOTAL_QUESTIONS = QUESTIONS.length;
 
 /**
- * Walk the user's answers and derive the (pathway, tenure, goal, intensity)
- * tuple. Pathway is the new primary signal for the roadmap (3 outcomes);
- * tenure is kept for backward-compat with legacy UI surfaces. Falls back
- * to safe defaults so we always have something to seed the roadmap.
+ * Plurality-vote across the user's six A/B/C/D answers and pick the
+ * dominant archetype. Then derive INTERIM defaults for the legacy
+ * (pathway, tenure, goal, intensity) columns so the existing 30-day
+ * roadmap generator still has something coherent to seed from.
+ *
+ * The legacy mapping below is deliberately conservative — every
+ * archetype lands a sensible-but-generic combo that won't break the
+ * generator. Replace it once archetype-native roadmap content ships
+ * (i.e. when lib/roadmap/generator.ts learns to switch on archetype).
  */
 export function deriveDimensions(answers: Record<string, number>): {
+  archetype: Archetype;
   pathway: Pathway;
   tenure: Tenure;
   goal: Goal;
   intensity: Intensity;
 } {
-  let pathway: Pathway = 'foundation';
-  let tenure: Tenure = 'warrior';
-  let goal: Goal = 'agency';
-  let intensity: Intensity = 'easy';
-
-  const pathwayCount: Record<Pathway, number> = { foundation: 0, growth: 0, scale: 0 };
-  const tenureCount: Record<Tenure, number> = { warrior: 0, ninja: 0, wizard: 0, dragon: 0 };
-  const goalCount: Record<Goal, number> = { agency: 0, saas: 0, content: 0, coaching: 0 };
-  const intensityCount: Record<Intensity, number> = { easy: 0, pro: 0 };
+  const tally: Record<Archetype, number> = {
+    mind: 0, body: 0, money: 0, direction: 0,
+  };
 
   for (const q of QUESTIONS) {
     const idx = answers[q.id];
     if (idx == null) continue;
     const opt = q.options[idx];
-    if (!opt?.maps) continue;
-    if (opt.maps.pathway) pathwayCount[opt.maps.pathway]++;
-    if (opt.maps.tenure) tenureCount[opt.maps.tenure]++;
-    if (opt.maps.goal) goalCount[opt.maps.goal]++;
-    if (opt.maps.intensity) intensityCount[opt.maps.intensity]++;
+    if (!opt) continue;
+    tally[opt.archetype]++;
   }
 
-  const top = <T extends string>(counts: Record<T, number>, fallback: T): T => {
-    const sorted = (Object.entries(counts) as [T, number][]).sort((a, b) => b[1] - a[1]);
-    const [winner, votes] = sorted[0];
-    return votes > 0 ? winner : fallback;
-  };
+  // Plurality winner; fall back to 'direction' if the user somehow
+  // submitted with zero answers (shouldn't happen — the submit button
+  // is disabled until every question is answered).
+  const archetype: Archetype =
+    (Object.entries(tally) as [Archetype, number][])
+      .sort((a, b) => b[1] - a[1])[0][0] ?? 'direction';
 
-  pathway = top(pathwayCount, pathway);
-  tenure = top(tenureCount, tenure);
-  goal = top(goalCount, goal);
-  intensity = top(intensityCount, intensity);
+  // INTERIM legacy mapping. See file-level comment.
+  const legacy = LEGACY_DEFAULTS[archetype];
 
-  // Tenure is also derivable from pathway when the questionnaire didn't
-  // hit any tenure-mapped answers (defensive — current questions vote
-  // tenure on Q1 only, but if we ever reorder/remove Q1 this kicks in).
-  if (tenureCount.warrior + tenureCount.ninja + tenureCount.wizard + tenureCount.dragon === 0) {
-    tenure = pathway === 'foundation' ? 'warrior' : pathway === 'growth' ? 'ninja' : 'wizard';
-  }
-
-  return { pathway, tenure, goal, intensity };
+  return { archetype, ...legacy };
 }
+
+const LEGACY_DEFAULTS: Record<Archetype, {
+  pathway: Pathway;
+  tenure: Tenure;
+  goal: Goal;
+  intensity: Intensity;
+}> = {
+  mind:      { pathway: 'foundation', tenure: 'warrior', goal: 'coaching', intensity: 'easy' },
+  body:      { pathway: 'foundation', tenure: 'ninja',   goal: 'coaching', intensity: 'pro'  },
+  money:     { pathway: 'growth',     tenure: 'wizard',  goal: 'agency',   intensity: 'pro'  },
+  direction: { pathway: 'foundation', tenure: 'warrior', goal: 'coaching', intensity: 'easy' },
+};

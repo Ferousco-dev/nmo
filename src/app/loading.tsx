@@ -2,7 +2,7 @@
 // A centered spinner — same style we use elsewhere in the app
 // (welcome search, signup celebration, questionnaire submit).
 
-import { Flame } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 
 export default function Loading() {
   return (
@@ -14,7 +14,9 @@ export default function Loading() {
 
       <div className="relative">
         {/* Subtle brand mark behind the spinner */}
-        <Flame className="h-7 w-7 text-accent/60 absolute inset-0 m-auto" strokeWidth={2.5} />
+        <div className="absolute inset-0 m-auto h-7 w-7 opacity-60">
+          <Logo size={28} />
+        </div>
         <div className="h-16 w-16 rounded-full border-4 border-accent/30 border-t-accent animate-spin" />
       </div>
     </div>
