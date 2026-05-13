@@ -13,6 +13,8 @@ import { TRACK_NAMES_ZH } from '@/lib/roadmap/generator';
 import { calculateLevel, cn } from '@/lib/utils';
 import { getT, getLocale } from '@/lib/i18n/server';
 import { BadgeCard } from '@/components/badges/BadgeCard';
+import { LinkSkoolPanel } from '@/components/profile/LinkSkoolPanel';
+import { DeleteAccountPanel } from '@/components/profile/DeleteAccountPanel';
 import { currentTier, nextTier } from '@/lib/badges';
 import type { Badge, Pathway, SkoolMembershipStatus } from '@/types';
 
@@ -99,8 +101,12 @@ export default async function ProfilePage() {
           </h1>
         </div>
 
+        {/* Skool-linking prompt — only shown when the user hasn't
+            connected their Skool account yet. */}
+        {!profile.skool_handle && <LinkSkoolPanel />}
+
         {/* Hero card */}
-        <div className="card-premium p-8 mb-6">
+        <div className="card-premium p-5 sm:p-8 mb-6">
           <div className="flex items-start gap-5">
             {profile.skool_avatar_url ? (
               <img
@@ -149,21 +155,12 @@ export default async function ProfilePage() {
         </div>
 
         {/* Details */}
-        <div className="card-premium p-8">
+        <div className="card-premium p-5 sm:p-8">
           <h3 className="font-display text-xl font-bold mb-5">{t.profile.questionnaireAnswers}</h3>
           <dl className="space-y-4">
-            {profile.pathway && (
-              <ProfileRow
-                label={t.profile.pathway}
-                value={
-                  <IconLabel
-                    Icon={pathwayIcons[profile.pathway as Pathway]}
-                    text={t.profile.pathwayLabels[profile.pathway as Pathway].label}
-                  />
-                }
-                highlight
-              />
-            )}
+            {/* Pathway/archetype intentionally hidden — every user
+                walks the same 30-day plan, no need to reveal a
+                category. Column stays in DB for analytics. */}
             <ProfileRow
               label={t.profile.tenure}
               value={
@@ -202,7 +199,7 @@ export default async function ProfilePage() {
         </div>
 
         {/* Badges */}
-        <div className="card-premium p-8 mt-6">
+        <div className="card-premium p-5 sm:p-8 mt-6">
           <div className="flex items-center justify-between mb-1">
             <h3 className="font-display text-xl font-bold">{t.badges.sectionTitle}</h3>
             {userNextTier ? (
@@ -250,6 +247,11 @@ export default async function ProfilePage() {
             </>
           )}
         </div>
+
+        {/* Danger zone — sits at the bottom of the profile because
+            it's a destructive action and shouldn't be the first
+            thing the user sees. */}
+        <DeleteAccountPanel />
       </main>
   );
 }

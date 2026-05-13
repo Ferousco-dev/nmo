@@ -45,6 +45,29 @@ interface BackfillPageFunctionSuccess {
   found: number;
   results: BackfillResult[];
 }
+interface EngagementEvent {
+  skool_handle: string;
+  event_type: 'post' | 'comment' | 'reply' | 'like';
+  source_id: string;
+  target_post_id?: string | null;
+  target_post_url?: string | null;
+  content_excerpt?: string | null;
+  occurred_at?: string | null;
+  likes_received?: number;
+  comments_received?: number;
+}
+interface EngagementPageFunctionSuccess {
+  ok: true;
+  count: number;
+  per_handle?: Record<string, number>;
+  events: EngagementEvent[];
+  /**
+   * Profile avatars harvested in-flight from each /@handle's og:image
+   * tag. Free byproduct of the engagement scrape — saves us from
+   * having to spin up a separate avatar-backfill run.
+   */
+  avatars?: Record<string, string>;
+}
 interface PageFunctionError {
   error: string;
   current_url?: string;
@@ -81,7 +104,9 @@ export async function reconcilePendingApifyRuns(
       return (
         typeof apifyRunId === 'string' &&
         apifyRunId.length > 0 &&
-        (mode === 'members_only_apify' || mode === 'avatar_backfill_apify')
+        (mode === 'members_only_apify' ||
+          mode === 'avatar_backfill_apify' ||
+          mode === 'engagement_events_apify')
       );
     })
     .slice(0, MAX_PER_POLL);
@@ -136,8 +161,94 @@ export async function reconcilePendingApifyRuns(
       await processMembersResult(supabase, row, notes, items, runMeta);
     } else if (mode === 'avatar_backfill_apify') {
       await processBackfillResult(supabase, row, notes, items, runMeta);
+    } else if (mode === 'engagement_events_apify') {
+      await processEngagementResult(supabase, row, notes, items, runMeta);
     }
   }
+}
+
+async function processEngagementResult(
+  supabase: SupabaseClient,
+  row: BotRunsRow,
+  notes: Record<string, unknown>,
+  items: unknown[],
+  runMeta: { finishedAt: string | null; status: string },
+): Promise<void> {
+  if (items.length === 0) {
+    await markFailed(supabase, row, notes, runMeta, 'Apify dataset empty');
+    return;
+  }
+  const result = items[0] as EngagementPageFunctionSuccess | PageFunctionError;
+  if ('error' in result) {
+    await markFailed(supabase, row, notes, runMeta, `pageFunction: ${result.error}`);
+    return;
+  }
+  // Avatars piggy-backed on the engagement scrape. Write them first
+  // (a single bulk upsert) so even users with zero recent activity
+  // still get a fresh avatar out of this run.
+  const avatarEntries = Object.entries(result.avatars ?? {}).filter(
+    ([handle, url]) =>
+      typeof handle === 'string' &&
+      handle.length >= 2 &&
+      typeof url === 'string' &&
+      /^https?:\/\//.test(url)
+  );
+  if (avatarEntries.length > 0) {
+    const avatarRows = avatarEntries.map(([handle, avatar_url]) => ({
+      handle: handle.toLowerCase(),
+      avatar_url,
+    }));
+    await supabase.rpc('admin_upsert_nmo_members', { p_members: avatarRows });
+  }
+
+  const events = Array.isArray(result.events) ? result.events : [];
+  if (events.length === 0) {
+    // Not a failure — the user may simply have no recent activity.
+    await supabase
+      .from('bot_runs')
+      .update({
+        status: 'success',
+        finished_at: new Date().toISOString(),
+        posts_seen: 0,
+        events_inserted: 0,
+        error: null,
+        notes: {
+          ...notes,
+          events_emitted: 0,
+          events_inserted: 0,
+          per_handle: result.per_handle ?? {},
+          apify_finished_at: runMeta.finishedAt,
+        },
+      })
+      .eq('id', row.id);
+    return;
+  }
+  const { data: insertedCount, error: writeErr } = await supabase.rpc(
+    'admin_upsert_engagement_events',
+    { p_events: events },
+  );
+  if (writeErr) {
+    await markFailed(supabase, row, notes, runMeta, `db_upsert_failed: ${writeErr.message}`);
+    return;
+  }
+  const inserted = (insertedCount as number | null) ?? 0;
+  await supabase
+    .from('bot_runs')
+    .update({
+      status: 'success',
+      finished_at: new Date().toISOString(),
+      posts_seen: events.length,
+      events_inserted: inserted,
+      error: null,
+      notes: {
+        ...notes,
+        events_emitted: events.length,
+        events_inserted: inserted,
+        per_handle: result.per_handle ?? {},
+        apify_finished_at: runMeta.finishedAt,
+      },
+    })
+    .eq('id', row.id);
 }
 
 async function processMembersResult(

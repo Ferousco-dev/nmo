@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Lock, ArrowLeft, ArrowRight, Flame, ChevronLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { DayDetailClient } from '@/components/roadmap/DayDetailClient';
+import { ensureCurrentRoadmap } from '@/lib/roadmap/auto-regenerate';
 import { getRoadmapDayMeta } from '@/data/roadmap-days';
 import { getT, getLocale } from '@/lib/i18n/server';
 import type { UserTask } from '@/types';
@@ -35,6 +36,9 @@ export default async function RoadmapDayPage({
     .eq('id', user.id)
     .single();
   if (!profile?.onboarding_completed) redirect('/onboarding');
+
+  // Self-heal stale roadmap rows before reading them.
+  await ensureCurrentRoadmap(supabase, user.id);
 
   // Pull the current day + the previous day in one round-trip so we can
   // tell whether THIS day is unlocked (prev day must be fully complete).

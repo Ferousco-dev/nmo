@@ -41,7 +41,7 @@ export default function LoginPage() {
         .eq('id', user.id)
         .single();
 
-      router.push(profile?.onboarding_completed ? '/dashboard' : '/onboarding');
+      router.push(profile?.onboarding_completed ? '/dashboard' : '/questionnaire');
       router.refresh();
     }
   };
@@ -66,7 +66,7 @@ export default function LoginPage() {
           <p className="mt-2 text-ink-muted">{t.auth.loginSubtitle}</p>
         </div>
 
-        <form onSubmit={handleLogin} className="card-premium p-8 space-y-5">
+        <form onSubmit={handleLogin} className="card-premium p-6 sm:p-8 space-y-5">
           <Input
             label={t.auth.email}
             type="email"

@@ -3,7 +3,9 @@ import Link from 'next/link';
 import { Flame, Trophy, Target, ArrowRight, ExternalLink, Activity, MessageSquare, Heart, FileText, Reply, Gift, BookOpen } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { TaskItem } from '@/components/roadmap/TaskItem';
+import { RefreshEngagementButton } from '@/components/RefreshEngagementButton';
 import { TRACK_NAMES_ZH } from '@/lib/roadmap/generator';
+import { ensureCurrentRoadmap } from '@/lib/roadmap/auto-regenerate';
 import { getT } from '@/lib/i18n/server';
 import { calculateLevel } from '@/lib/utils';
 
@@ -20,6 +22,11 @@ export default async function DashboardPage() {
     .single();
 
   if (!profile?.onboarding_completed) redirect('/onboarding');
+
+  // Self-heal: if this user is still on the legacy task set (or has
+  // an incomplete one), wipe and reinsert the current 男兒幫 plan
+  // before reading. One cheap SELECT when nothing needs to change.
+  await ensureCurrentRoadmap(supabase, user.id);
 
   const [{ data: allTasks }, { data: grade }, { data: lastBotRun }] = await Promise.all([
     supabase
@@ -68,9 +75,13 @@ export default async function DashboardPage() {
   const engagementScore = grade?.engagement_score ?? 0;
   const engagementBreakdown = {
     posts: grade?.posts_count ?? 0,
-    comments: grade?.comments_count ?? 0,
+    // Likes the user RECEIVED across all their posts (not likes they gave).
+    likesReceived: grade?.likes_received_total ?? 0,
+    // Total comments under their posts.
+    commentsReceived: grade?.comments_received_total ?? 0,
+    // Replies the user authored. Best-effort scrape; may underreport
+    // until the next refresh.
     replies: grade?.replies_count ?? 0,
-    likes: grade?.likes_count ?? 0,
   };
 
   return (
@@ -171,20 +182,23 @@ export default async function DashboardPage() {
                   : t.activity.neverSynced}
               </p>
             </div>
-            <Link
-              href="/activity"
-              className="inline-flex items-center gap-1.5 text-sm text-accent hover:text-accent-glow font-medium whitespace-nowrap shrink-0"
-            >
-              {t.dashboard.viewDetails}
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
+            <div className="flex items-center gap-3 shrink-0">
+              {profile.skool_handle && <RefreshEngagementButton />}
+              <Link
+                href="/activity"
+                className="inline-flex items-center gap-1.5 text-sm text-accent hover:text-accent-glow font-medium whitespace-nowrap"
+              >
+                {t.dashboard.viewDetails}
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </Link>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <BreakdownTile icon={<FileText className="h-5 w-5" />} label={t.activity.posts} value={engagementBreakdown.posts} weight={10} />
-            <BreakdownTile icon={<MessageSquare className="h-5 w-5" />} label={t.activity.comments} value={engagementBreakdown.comments} weight={5} />
+            <BreakdownTile icon={<Heart className="h-5 w-5" />} label={t.activity.likesReceived} value={engagementBreakdown.likesReceived} weight={1} />
+            <BreakdownTile icon={<MessageSquare className="h-5 w-5" />} label={t.activity.commentsReceived} value={engagementBreakdown.commentsReceived} weight={5} />
             <BreakdownTile icon={<Reply className="h-5 w-5" />} label={t.activity.replies} value={engagementBreakdown.replies} weight={3} />
-            <BreakdownTile icon={<Heart className="h-5 w-5" />} label={t.activity.likes} value={engagementBreakdown.likes} weight={1} />
           </div>
 
           {engagementScore === 0 && (

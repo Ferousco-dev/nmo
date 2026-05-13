@@ -4,23 +4,28 @@ import { WelcomeSearch } from '@/components/welcome/WelcomeSearch';
 
 export const dynamic = 'force-dynamic';
 
+// Flow:
+//   - not signed in              → show WelcomeSearch (find-yourself-in-Skool)
+//   - signed in + questionnaire incomplete → /questionnaire
+//   - signed in + onboarded     → /dashboard
+//
+// The legacy /onboarding screen is no longer in the user journey —
+// /questionnaire handles all new-user setup.
 export default async function Home() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Already signed in → straight to the right place
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('onboarding_completed')
       .eq('id', user.id)
       .single();
-    redirect(profile?.onboarding_completed ? '/dashboard' : '/onboarding');
+    redirect(profile?.onboarding_completed ? '/dashboard' : '/questionnaire');
   }
 
-  // Pull data for the welcome state in parallel:
-  //   - total community member count (rounded down to "1,800+" style)
-  //   - sample of 7 avatars for the social-proof gallery
+  // Public landing: rounded community count + a small avatar gallery
+  // pulled from nmo_members for social proof.
   const [{ count }, { data: gallery }] = await Promise.all([
     supabase
       .from('nmo_members')
@@ -34,7 +39,6 @@ export default async function Home() {
       .limit(20),
   ]);
 
-  // Pick 7 from the top-20 for variety. Stable per-render so it's not jarring.
   const galleryAvatars = (gallery ?? [])
     .map((r) => r.avatar_url as string)
     .filter(Boolean)

@@ -292,7 +292,7 @@ function RoadmapBoard({
 
   if (entries.length === 0) {
     return (
-      <div className="card-premium p-10 text-center">
+      <div className="card-premium p-6 sm:p-10 text-center">
         <Trophy className="h-10 w-10 text-accent mx-auto mb-3" aria-hidden />
         <p className="text-ink-muted">{t.leaderboard.leaderboardEmpty}</p>
       </div>

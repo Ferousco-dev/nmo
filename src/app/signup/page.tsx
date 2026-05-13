@@ -115,7 +115,7 @@ export default function SignupPage() {
   }, [celebrating, router]);
 
   const handleContinueNow = () => {
-    router.push('/onboarding');
+    router.push('/questionnaire');
     router.refresh();
   };
 
@@ -262,7 +262,7 @@ export default function SignupPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSignup} className="card-premium p-8 space-y-5">
+        <form onSubmit={handleSignup} className="card-premium p-6 sm:p-8 space-y-5">
           <Input
             label={t.auth.email}
             type="email"

@@ -27,7 +27,7 @@ export default async function ConfirmPage({
       .select('onboarding_completed')
       .eq('id', user.id)
       .single();
-    redirect(profile?.onboarding_completed ? '/dashboard' : '/onboarding');
+    redirect(profile?.onboarding_completed ? '/dashboard' : '/questionnaire');
   }
 
   const raw = (searchParams.handle ?? '').trim().replace(/^@+/, '').toLowerCase();
@@ -72,7 +72,7 @@ export default async function ConfirmPage({
 
       <main className="flex-1 flex items-center justify-center px-4 py-24">
         <div className="w-full max-w-md animate-slide-up">
-          <div className="card-premium p-8 sm:p-10 text-center">
+          <div className="card-premium p-6 sm:p-10 text-center">
             {/* Big avatar centered */}
             <div className="flex justify-center mb-6">
               {member.avatar_url ? (

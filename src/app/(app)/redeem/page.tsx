@@ -64,7 +64,7 @@ export default function RedeemPage() {
           <p className="mt-3 text-ink-muted">{t.redeem.subtitle}</p>
         </div>
 
-        <form onSubmit={handleRedeem} className="card-premium p-8 space-y-5">
+        <form onSubmit={handleRedeem} className="card-premium p-6 sm:p-8 space-y-5">
           <Input
             label={t.redeem.codeLabel}
             type="text"

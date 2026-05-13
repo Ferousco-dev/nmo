@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowRight, ArrowLeft, Check,
-  Sword, Shield, Wand2, Crown,
   Building2, Code2, Video, GraduationCap,
   Sprout, Rocket,
 } from 'lucide-react';
@@ -14,9 +13,12 @@ import { Button } from '@/components/ui/Button';
 import { useT } from '@/lib/i18n/client';
 import { cn } from '@/lib/utils';
 import { assignTrack, generateRoadmap } from '@/lib/roadmap/generator';
-import type { Tenure, Goal, Intensity } from '@/types';
+import type { Goal, Intensity } from '@/types';
 
-const TOTAL_STEPS = 3;
+// Onboarding now has just 2 steps — Goal + Intensity. The tenure step
+// (warrior / ninja / wizard / dragon) was removed: every user gets the
+// same 男兒幫 30-day plan, so revealing a "tier" was misleading.
+const TOTAL_STEPS = 2;
 
 // PostgreSQL unique-violation: SQLSTATE 23505. Surfaces from supabase-js
 // either as `error.code === '23505'` or with a message containing
@@ -33,16 +35,14 @@ export function OnboardingClient() {
   const supabase = createClient();
 
   const [step, setStep] = useState(1);
-  const [tenure, setTenure] = useState<Tenure | null>(null);
   const [goal, setGoal] = useState<Goal | null>(null);
   const [intensity, setIntensity] = useState<Intensity | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const canProceed = () => {
-    if (step === 1) return tenure !== null;
-    if (step === 2) return goal !== null;
-    if (step === 3) return intensity !== null;
+    if (step === 1) return goal !== null;
+    if (step === 2) return intensity !== null;
     return false;
   };
 
@@ -56,7 +56,7 @@ export function OnboardingClient() {
   };
 
   const handleFinish = async () => {
-    if (!tenure || !goal || !intensity) return;
+    if (!goal || !intensity) return;
     setLoading(true);
     setError('');
 
@@ -67,7 +67,10 @@ export function OnboardingClient() {
       return;
     }
 
-    const track = assignTrack(tenure, goal, intensity);
+    // assignTrack now ignores its first arg (tenure was retired) but
+    // we still call it for shape compat. The returned value is a
+    // single unified track id.
+    const track = assignTrack('foundation', goal, intensity);
 
     // Upsert (not update) so we self-heal when the on_auth_user_created
     // trigger never fired and the profile row is missing — the task
@@ -78,7 +81,6 @@ export function OnboardingClient() {
         {
           id: user.id,
           email: user.email,
-          tenure,
           goal,
           intensity,
           track_assigned: track,
@@ -93,7 +95,7 @@ export function OnboardingClient() {
       return;
     }
 
-    const roadmap = generateRoadmap(tenure, goal, intensity);
+    const roadmap = generateRoadmap();
     const taskRows = roadmap.flatMap((day) =>
       day.tasks.map((task) => ({
         user_id: user.id,
@@ -150,9 +152,8 @@ export function OnboardingClient() {
         </div>
 
         <div className="card-premium p-6 sm:p-8 md:p-10">
-          {step === 1 && <Step1Tenure value={tenure} onChange={setTenure} />}
-          {step === 2 && <Step2Goal value={goal} onChange={setGoal} />}
-          {step === 3 && <Step3Intensity value={intensity} onChange={setIntensity} />}
+          {step === 1 && <StepGoal value={goal} onChange={setGoal} />}
+          {step === 2 && <StepIntensity value={intensity} onChange={setIntensity} />}
 
           {error && <p className="mt-4 text-sm text-danger">{error}</p>}
 
@@ -177,57 +178,6 @@ export function OnboardingClient() {
   );
 }
 
-const TENURE_OPTIONS: { key: Tenure; Icon: LucideIcon }[] = [
-  { key: 'warrior', Icon: Sword },
-  { key: 'ninja', Icon: Shield },
-  { key: 'wizard', Icon: Wand2 },
-  { key: 'dragon', Icon: Crown },
-];
-
-function Step1Tenure({ value, onChange }: { value: Tenure | null; onChange: (v: Tenure) => void }) {
-  const t = useT();
-  return (
-    <div>
-      <h2 className="font-display text-2xl sm:text-3xl font-bold mb-2 gradient-text">
-        {t.onboarding.tenureStepTitle}
-      </h2>
-      <p className="text-ink-muted mb-6">{t.onboarding.tenureStepDesc}</p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {TENURE_OPTIONS.map(({ key, Icon }) => {
-          const opt = t.onboarding.tenure[key];
-          const selected = value === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onChange(key)}
-              className={cn(
-                'group flex items-center gap-3 p-4 rounded-xl text-left border transition-all',
-                selected
-                  ? 'border-accent bg-accent/10 glow-blue'
-                  : 'border-line-strong bg-bg-raised hover:border-accent/50 hover:bg-bg-hover'
-              )}
-            >
-              <div className={cn(
-                'h-10 w-10 rounded-lg flex items-center justify-center shrink-0',
-                selected ? 'bg-accent/20 text-accent' : 'bg-bg-card text-ink-muted'
-              )}>
-                <Icon className="h-5 w-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-ink">{opt.label}</div>
-                <div className="text-xs text-ink-muted mt-0.5">{opt.desc}</div>
-              </div>
-              {selected && <Check className="h-5 w-5 text-accent shrink-0" />}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 const GOAL_OPTIONS: { key: Goal; Icon: LucideIcon }[] = [
   { key: 'agency', Icon: Building2 },
   { key: 'saas', Icon: Code2 },
@@ -235,7 +185,7 @@ const GOAL_OPTIONS: { key: Goal; Icon: LucideIcon }[] = [
   { key: 'coaching', Icon: GraduationCap },
 ];
 
-function Step2Goal({ value, onChange }: { value: Goal | null; onChange: (v: Goal) => void }) {
+function StepGoal({ value, onChange }: { value: Goal | null; onChange: (v: Goal) => void }) {
   const t = useT();
   return (
     <div>
@@ -284,7 +234,7 @@ const INTENSITY_OPTIONS: { key: Intensity; Icon: LucideIcon }[] = [
   { key: 'pro', Icon: Rocket },
 ];
 
-function Step3Intensity({
+function StepIntensity({
   value,
   onChange,
 }: {

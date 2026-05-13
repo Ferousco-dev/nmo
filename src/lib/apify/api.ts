@@ -54,16 +54,42 @@ function pickApprovalUrl(bodyText: string): string | undefined {
   return undefined;
 }
 
+export interface ApifyRunOptions {
+  /**
+   * RAM in megabytes. Apify charges by (memory × runtime). Default for
+   * Playwright is 4096 — we override to 2048 across the board, which
+   * halves the compute-unit cost. Chromium is fine at 2GB for the
+   * single-page scrapes we run.
+   */
+  memoryMbytes?: number;
+  /**
+   * Hard cap on total run wall-clock. Beats the default of "unlimited"
+   * which lets a misbehaving page rack up costs forever.
+   */
+  timeoutSecs?: number;
+}
+
 /**
  * Fire an Apify actor run asynchronously. Returns ~1s with the run id;
  * the actor itself runs in Apify's cloud and may take many minutes.
+ *
+ * `memoryMbytes` and `timeoutSecs` go on the query string (not the
+ * actor input) because they're run-level overrides, not actor params.
  */
 export async function apifyStartRun(
   actor: string,
   input: unknown,
   token: string,
+  options: ApifyRunOptions = {},
 ): Promise<ApifyRunMeta> {
-  const url = `${APIFY_BASE}/acts/${actor}/runs?token=${encodeURIComponent(token)}`;
+  const params = new URLSearchParams({ token });
+  if (typeof options.memoryMbytes === 'number' && options.memoryMbytes > 0) {
+    params.set('memory', String(options.memoryMbytes));
+  }
+  if (typeof options.timeoutSecs === 'number' && options.timeoutSecs > 0) {
+    params.set('timeout', String(options.timeoutSecs));
+  }
+  const url = `${APIFY_BASE}/acts/${actor}/runs?${params.toString()}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

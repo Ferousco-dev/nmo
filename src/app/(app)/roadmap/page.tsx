@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { DayCard } from '@/components/roadmap/DayCard';
 import { TRACK_NAMES_ZH } from '@/lib/roadmap/generator';
+import { ensureCurrentRoadmap } from '@/lib/roadmap/auto-regenerate';
 import { getT } from '@/lib/i18n/server';
 import type { UserTask } from '@/types';
 
@@ -33,6 +34,9 @@ export default async function RoadmapPage() {
     .single();
 
   if (!profile?.onboarding_completed) redirect('/onboarding');
+
+  // Self-heal stale roadmap rows before reading them.
+  await ensureCurrentRoadmap(supabase, user.id);
 
   const { data: tasks } = await supabase
     .from('user_tasks')

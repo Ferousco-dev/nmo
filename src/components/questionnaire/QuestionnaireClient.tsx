@@ -82,27 +82,40 @@ export function QuestionnaireClient() {
     const derived = deriveDimensions(answers);
     const track = assignTrack(derived.pathway, derived.goal, derived.intensity);
 
-    // 1. Ensure the profile row exists with the questionnaire-derived
-    // dimensions, but DO NOT mark onboarding_completed yet — we want
-    // the user to retry the questionnaire if task persistence fails.
-    const { error: pErr } = await supabase
+    // Profile row should already exist (created by the handle_new_user
+    // auth trigger on signup). We UPDATE instead of upsert because the
+    // 2026-05 lockdown migration revoked table-wide UPDATE — upsert
+    // becomes INSERT...ON CONFLICT and PostgREST hits the table-level
+    // check, failing with "permission denied for table profiles" even
+    // though the column-level grants are fine.
+    //
+    // Two passes: the columns we know are granted in every install,
+    // then a best-effort pass for metadata columns added by optional
+    // migrations (archetype, pathway, questionnaire_*).
+    const { error: coreErr } = await supabase
       .from('profiles')
-      .upsert(
-        {
-          id: user.id,
-          email: user.email,
-          archetype: derived.archetype, // primary signal from the new questionnaire
-          pathway: derived.pathway,
-          tenure: derived.tenure, // legacy, still kept in sync
-          goal: derived.goal,
-          intensity: derived.intensity,
-          track_assigned: track,
-          questionnaire_answers: answers,
-          questionnaire_completed_at: new Date().toISOString(),
-        },
-        { onConflict: 'id' }
-      );
-    if (pErr) throw new Error(`profile: ${pErr.message}`);
+      .update({
+        goal: derived.goal,
+        intensity: derived.intensity,
+        track_assigned: track,
+      })
+      .eq('id', user.id);
+    if (coreErr) throw new Error(`profile: ${coreErr.message}`);
+
+    const { error: metaErr } = await supabase
+      .from('profiles')
+      .update({
+        archetype: derived.archetype,
+        pathway: derived.pathway,
+        tenure: derived.tenure,
+        questionnaire_answers: answers,
+        questionnaire_completed_at: new Date().toISOString(),
+      })
+      .eq('id', user.id);
+    if (metaErr) {
+      // eslint-disable-next-line no-console
+      console.warn('Questionnaire metadata write skipped:', metaErr.message);
+    }
 
     // 2. Insert the 30-day task set. Idempotent via unique(user_id, task_id).
     const roadmap = generateRoadmap(derived.pathway, derived.goal, derived.intensity);
@@ -272,6 +285,16 @@ export function QuestionnaireClient() {
           })}
         </div>
       </main>
+
+      {submitError && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 max-w-md w-[calc(100%-2rem)]">
+          <div className="rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+            <p className="font-semibold mb-1">儲存失敗 / Save failed</p>
+            <p className="text-xs font-mono break-words">{submitError}</p>
+            <p className="text-xs mt-2 text-danger/80">點下方按鈕重試。Tap the button below to retry.</p>
+          </div>
+        </div>
+      )}
 
       {/* Sticky submit footer */}
       <footer

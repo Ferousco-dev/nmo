@@ -15,14 +15,70 @@ export default async function FamilyTreePage() {
     .select('*')
     .order('display_order', { ascending: true });
 
-  const all = (members || []) as FamilyTreeMember[];
+  const rawAll = (members || []) as FamilyTreeMember[];
 
-  // Group by role tier
-  const tiers = [
+  // For every row that points at a Skool handle, pull the freshest
+  // display_name + avatar from nmo_members. That table is rewritten
+  // every day by the Apify cron, so the family tree mirrors live Skool
+  // data without anyone touching family_tree again.
+  const handles = rawAll
+    .map((m) => m.skool_handle)
+    .filter((h): h is string => typeof h === 'string' && h.length > 0);
+
+  let liveByHandle = new Map<string, { display_name: string | null; avatar_url: string | null }>();
+  if (handles.length > 0) {
+    const { data: live } = await supabase
+      .from('nmo_members')
+      .select('handle, display_name, avatar_url')
+      .in('handle', handles);
+    if (live) {
+      liveByHandle = new Map(
+        (live as Array<{ handle: string; display_name: string | null; avatar_url: string | null }>).map(
+          (row) => [row.handle, { display_name: row.display_name, avatar_url: row.avatar_url }]
+        )
+      );
+    }
+  }
+
+  const all: FamilyTreeMember[] = rawAll.map((m) => {
+    if (!m.skool_handle) return m;
+    const fresh = liveByHandle.get(m.skool_handle);
+    if (!fresh) return m;
+    return {
+      ...m,
+      name: fresh.display_name ?? m.name,
+      photo_url: fresh.avatar_url ?? m.photo_url,
+    };
+  });
+
+  // Group by role tier. Anything that doesn't match a known tier
+  // (a custom role typed via /admin/family-tree, for example) falls
+  // through to its own section so it always renders.
+  const knownTiers: { label: string; roles: string[] }[] = [
+    { label: t.familyTree.tiers.owner, roles: ['Owner'] },
     { label: t.familyTree.tiers.founder, roles: ['CEO / Founder', 'Founder', 'CEO'] },
     { label: t.familyTree.tiers.leadership, roles: ['COO', 'CMO', 'CSMO'] },
     { label: t.familyTree.tiers.regional, roles: ['Regional Commander'] },
     { label: t.familyTree.tiers.subregional, roles: ['Subregional Commander'] },
+    { label: t.familyTree.tiers.admin, roles: ['Admin'] },
+    { label: t.familyTree.tiers.moderator, roles: ['Moderator'] },
+  ];
+
+  const knownRoleSet = new Set(knownTiers.flatMap((tier) => tier.roles));
+  const otherByRole = new Map<string, FamilyTreeMember[]>();
+  for (const m of all) {
+    if (knownRoleSet.has(m.role)) continue;
+    const list = otherByRole.get(m.role) ?? [];
+    list.push(m);
+    otherByRole.set(m.role, list);
+  }
+  const tiers: Array<{ label: string; roles: string[]; _preFiltered?: FamilyTreeMember[] }> = [
+    ...knownTiers,
+    ...Array.from(otherByRole.entries()).map(([role, ms]) => ({
+      label: role,
+      roles: [role],
+      _preFiltered: ms,
+    })),
   ];
 
   return (
@@ -36,7 +92,7 @@ export default async function FamilyTreePage() {
 
         <div className="space-y-10">
           {tiers.map((tier) => {
-            const tierMembers = all.filter((m) => tier.roles.includes(m.role));
+            const tierMembers = tier._preFiltered ?? all.filter((m) => tier.roles.includes(m.role));
             if (tierMembers.length === 0) return null;
 
             return (
