@@ -35,7 +35,11 @@ export async function updateSession(request: NextRequest) {
     pathname === '/' ||
     pathname === '/confirm' ||
     isAuthPage ||
-    pathname.startsWith('/api/skool/search');
+    pathname.startsWith('/api/skool/search') ||
+    // Cron routes authenticate themselves via CRON_SECRET; they're hit
+    // by Vercel's cron infra with no Supabase session. Without this the
+    // middleware 307s them to /login and the cron never runs.
+    pathname.startsWith('/api/cron/');
 
   // Not signed in & trying to access protected route → redirect to login
   if (!user && !isPublic) {

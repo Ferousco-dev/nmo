@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Users, Ticket, ScrollText, ArrowRight, BookOpenText, Network } from 'lucide-react';
+import { Users, Ticket, ScrollText, ArrowRight, BookOpenText, Network, Award } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getT } from '@/lib/i18n/server';
 import { BotSyncCard } from '@/components/admin/BotSyncCard';
@@ -17,12 +17,14 @@ export default async function AdminOverviewPage() {
     { count: codeCount },
     { count: resourceCount },
     { count: familyTreeCount },
+    { count: badgeCount },
     { data: recentActions },
   ] = await Promise.all([
     supabase.from('profiles').select('id', { count: 'exact', head: true }),
     supabase.from('event_codes').select('code', { count: 'exact', head: true }).eq('is_active', true),
     supabase.from('resources').select('id', { count: 'exact', head: true }).eq('is_active', true),
     supabase.from('family_tree').select('id', { count: 'exact', head: true }),
+    supabase.from('badges').select('id', { count: 'exact', head: true }).eq('is_active', true),
     supabase
       .from('admin_actions')
       .select('id, action_type, target_user_id, payload, created_at, admin_id')
@@ -35,6 +37,7 @@ export default async function AdminOverviewPage() {
     { href: '/admin/codes', icon: Ticket, count: codeCount ?? 0, ...t.admin.cards.codes },
     { href: '/admin/resources', icon: BookOpenText, count: resourceCount ?? 0, ...t.admin.cards.resources },
     { href: '/admin/family-tree', icon: Network, count: familyTreeCount ?? 0, ...t.admin.cards.familyTree },
+    { href: '/admin/badges', icon: Award, count: badgeCount ?? 0, ...t.admin.cards.badges },
   ];
 
   return (

@@ -5,12 +5,13 @@ import { WelcomeSearch } from '@/components/welcome/WelcomeSearch';
 export const dynamic = 'force-dynamic';
 
 // Flow:
-//   - not signed in              → show WelcomeSearch (find-yourself-in-Skool)
-//   - signed in + questionnaire incomplete → /questionnaire
-//   - signed in + onboarded     → /dashboard
+//   - signed in + onboarded → /dashboard
+//   - everyone else (signed out, or signed in but not onboarded) → WelcomeSearch
 //
-// The legacy /onboarding screen is no longer in the user journey —
-// /questionnaire handles all new-user setup.
+// We do NOT auto-redirect mid-onboarding sessions to /questionnaire here —
+// a stale auth cookie would otherwise yank a user who thinks they're signed
+// out straight into the questionnaire. They can resume setup via /login or
+// /questionnaire directly.
 export default async function Home() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -21,7 +22,9 @@ export default async function Home() {
       .select('onboarding_completed')
       .eq('id', user.id)
       .single();
-    redirect(profile?.onboarding_completed ? '/dashboard' : '/questionnaire');
+    if (profile?.onboarding_completed) {
+      redirect('/dashboard');
+    }
   }
 
   // Public landing: rounded community count + a small avatar gallery

@@ -26,6 +26,10 @@ next-env.d.ts
 # Companion bot lives in its own repo: https://github.com/Ferousco-dev/nom-bot
 bot/
 
+# Local clone of the louiewoof2026/skool-mcp server used for live API
+# exploration via Claude Code. Not part of this project's deployable.
+skool-mcp/
+
 # One-off dev artefacts (browser console snippets, scrape dumps, etc.)
 catch.js
 user.json

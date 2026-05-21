@@ -53,13 +53,13 @@ export const TIER_THRESHOLDS: { tier: number; points: number }[] = [
   { tier: 1,  points: 0 },
   { tier: 2,  points: 50 },
   { tier: 3,  points: 150 },
-  { tier: 4,  points: 350 },
-  { tier: 5,  points: 700 },
-  { tier: 6,  points: 1200 },
-  { tier: 7,  points: 2000 },
-  { tier: 8,  points: 3500 },
-  { tier: 9,  points: 6000 },
-  { tier: 10, points: 10000 },
+  { tier: 4,  points: 400 },
+  { tier: 5,  points: 900 },
+  { tier: 6,  points: 1800 },
+  { tier: 7,  points: 3500 },
+  { tier: 8,  points: 6500 },
+  { tier: 9,  points: 11000 },
+  { tier: 10, points: 18000 },
 ];
 
 /** Highest tier the user has crossed at the given point total. */

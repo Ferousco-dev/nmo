@@ -136,6 +136,11 @@ export interface Badge {
   category: BadgeCategory;
   is_active: boolean;
   display_order: number;
+  /** When true, only one user may hold this badge at a time (system-enforced). */
+  is_one_of_one?: boolean;
+  /** Optional Cloudinary URL for an admin-uploaded badge artwork. If set,
+   *  UI renders this instead of the Lucide icon. */
+  image_url?: string | null;
 }
 
 export interface UserBadge {

@@ -70,9 +70,19 @@ async function liveSearch(rawQ: string) {
     return NextResponse.json({ ok: true, results: [] });
   }
 
-  // Sanitize for ILIKE: escape % and _ so they're treated as literals
-  const escaped = q.replace(/[\\%_]/g, (c) => '\\' + c);
-  const pattern = `%${escaped}%`;
+  // Tokenize on whitespace and join with % wildcards so "Jack li" matches
+  // both display_name "Jack Liu" AND handle "jack-liu-9368" (where the
+  // word break is a hyphen, not a space). Each token is escaped so user-
+  // supplied % / _ / \ aren't treated as LIKE metacharacters.
+  const tokens = q
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((t) => t.replace(/[\\%_]/g, (c) => '\\' + c));
+  if (tokens.length === 0) {
+    return NextResponse.json({ ok: true, results: [] });
+  }
+  const pattern = `%${tokens.join('%')}%`;
 
   const supabase = createClient();
   const { data, error } = await supabase

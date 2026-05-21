@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import type { Badge } from '@/types';
 
 interface Props {
-  badge: Pick<Badge, 'name_zh' | 'name_en' | 'icon' | 'color' | 'tier'>;
+  badge: Pick<Badge, 'name_zh' | 'name_en' | 'icon' | 'color' | 'tier' | 'image_url'>;
   locale?: string;
   size?: 'sm' | 'md';
   className?: string;
@@ -19,6 +19,7 @@ export function BadgeChip({ badge, locale, size = 'sm', locked = false, classNam
   const isZh = locale === 'zh-Hant';
   const label = isZh ? badge.name_zh : badge.name_en;
   const color = badge.color ?? '#71717a';
+  const iconSize = size === 'sm' ? 'h-3 w-3' : 'h-3.5 w-3.5';
 
   return (
     <span
@@ -39,7 +40,11 @@ export function BadgeChip({ badge, locale, size = 'sm', locked = false, classNam
       }
       title={label}
     >
-      <Icon className={size === 'sm' ? 'h-3 w-3' : 'h-3.5 w-3.5'} strokeWidth={2.4} />
+      {badge.image_url ? (
+        <img src={badge.image_url} alt="" className={cn(iconSize, 'object-contain rounded-sm')} />
+      ) : (
+        <Icon className={iconSize} strokeWidth={2.4} />
+      )}
       <span className="truncate max-w-[140px]">
         {badge.tier ? `Lv${badge.tier} · ` : ''}{label}
       </span>

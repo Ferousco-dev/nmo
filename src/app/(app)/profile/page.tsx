@@ -13,6 +13,7 @@ import { TRACK_NAMES_ZH } from '@/lib/roadmap/generator';
 import { calculateLevel, cn } from '@/lib/utils';
 import { getT, getLocale } from '@/lib/i18n/server';
 import { BadgeCard } from '@/components/badges/BadgeCard';
+import { BadgeSlots } from '@/components/badges/BadgeSlots';
 import { LinkSkoolPanel } from '@/components/profile/LinkSkoolPanel';
 import { DeleteAccountPanel } from '@/components/profile/DeleteAccountPanel';
 import { currentTier, nextTier } from '@/lib/badges';
@@ -92,6 +93,14 @@ export default async function ProfilePage() {
   const earnedBadges = catalog.filter((b) => earnedIds.has(b.id));
   const userTier = currentTier(profile.total_points);
   const userNextTier = nextTier(profile.total_points);
+
+  // 5-slot showcase: highest-tier badge they hold (primary) + their
+  // earned specials, capped at 4, in display_order.
+  const primaryBadge =
+    tierBadges
+      .filter((b) => earnedIds.has(b.id))
+      .sort((a, b) => (b.tier ?? 0) - (a.tier ?? 0))[0] ?? null;
+  const earnedSpecials = specialBadges.filter((b) => earnedIds.has(b.id));
 
   return (
           <main className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
@@ -217,6 +226,18 @@ export default async function ProfilePage() {
           <p className="text-xs text-ink-muted mb-5">
             {earnedBadges.length} {t.badges.earned} · Lv {userTier}
           </p>
+
+          {/* 5-slot showcase (primary + 4 specials with locked placeholders) */}
+          <div className="mb-6">
+            <BadgeSlots
+              primary={primaryBadge}
+              specials={earnedSpecials}
+              locale={locale}
+              primaryLabel={t.badges.primarySlot}
+              specialLabel={t.badges.specialSlot}
+              emptyLabel={t.badges.slotEmpty}
+            />
+          </div>
 
           {catalog.length === 0 ? (
             <p className="text-sm text-ink-muted text-center py-8">{t.badges.empty}</p>

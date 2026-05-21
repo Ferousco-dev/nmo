@@ -10,7 +10,7 @@ import type { Badge } from '@/types';
 interface Props {
   badge: Pick<
     Badge,
-    'name_zh' | 'name_en' | 'description_zh' | 'description_en' | 'icon' | 'color' | 'tier' | 'points_threshold' | 'category'
+    'name_zh' | 'name_en' | 'description_zh' | 'description_en' | 'icon' | 'image_url' | 'color' | 'tier' | 'points_threshold' | 'category'
   >;
   locale?: string;
   /** Locked tier preview — dims the tile + replaces icon with a lock */
@@ -51,6 +51,8 @@ export function BadgeCard({ badge, locale, locked = false, className }: Props) {
       >
         {locked ? (
           <Lock className="h-6 w-6 text-ink-dim" />
+        ) : badge.image_url ? (
+          <img src={badge.image_url} alt="" className="h-8 w-8 object-contain" />
         ) : (
           <Icon className="h-7 w-7" strokeWidth={2} style={{ color }} />
         )}

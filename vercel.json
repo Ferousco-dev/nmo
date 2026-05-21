@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/reconcile",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/scrape-engagement",
+      "schedule": "0 * * * *"
     }
   ],
   "functions": {
@@ -11,6 +15,7 @@
     "src/app/api/admin/bot/trigger-backfill-avatars-apify/route.ts": { "maxDuration": 30 },
     "src/app/api/admin/bot/trigger-engagement-apify/route.ts": { "maxDuration": 30 },
     "src/app/api/me/refresh-engagement/route.ts": { "maxDuration": 30 },
-    "src/app/api/cron/reconcile/route.ts": { "maxDuration": 60 }
+    "src/app/api/cron/reconcile/route.ts": { "maxDuration": 60 },
+    "src/app/api/cron/scrape-engagement/route.ts": { "maxDuration": 60 }
   }
 }
