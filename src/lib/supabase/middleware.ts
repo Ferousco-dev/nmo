@@ -39,7 +39,11 @@ export async function updateSession(request: NextRequest) {
     // Cron routes authenticate themselves via CRON_SECRET; they're hit
     // by Vercel's cron infra with no Supabase session. Without this the
     // middleware 307s them to /login and the cron never runs.
-    pathname.startsWith('/api/cron/');
+    pathname.startsWith('/api/cron/') ||
+    // Locale switcher writes a cookie via POST /api/locale. Anonymous
+    // visitors on the welcome page must be able to call it — otherwise
+    // the switcher silently no-ops because the response is a redirect.
+    pathname === '/api/locale';
 
   // Not signed in & trying to access protected route → redirect to login
   if (!user && !isPublic) {
