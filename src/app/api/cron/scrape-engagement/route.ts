@@ -1,22 +1,22 @@
-// Vercel Cron: kicks off the engagement scrape on a schedule so the
-// community's posts/comments/likes flow into points_ledger without
-// anyone clicking the admin button.
+// Vercel Cron: the once-a-day workhorse on Hobby plan.
 //
-// Mirrors /api/admin/bot/trigger-engagement-apify but:
-//   - Authenticated via CRON_SECRET (same as reconcile)
-//   - Service-role Supabase client (no user session)
-//   - Smaller default batch (CRON_ENGAGEMENT_BATCH, default 50) so the
-//     12-minute wall-clock per run stays well under the Apify budget
-//   - Honours admin_handles_for_engagement's skip_recent_hours filter
-//     so already-fresh handles don't get scraped twice
+// Vercel Hobby caps crons to a single daily fire, so this route does
+// BOTH jobs in one shot:
+//   1. Reconcile any in-flight Apify runs from yesterday — finalises
+//      bot_runs rows, ingests datasets into engagement_events
+//   2. Kick off today's batch of per-profile engagement scrapes
 //
-// vercel.json registers this hourly (`0 * * * *`). At batch=50 and a
-// daily skip filter, a 1000-member community gets a full sweep every
-// ~20 hours, with no nightly burst.
+// Mirrors /api/admin/bot/trigger-engagement-apify but auth'd via
+// CRON_SECRET and using a service-role client (no user session).
+// Configurable batch + skip-recent via env vars.
+//
+// vercel.json schedules this daily at midnight UTC (8am Asia/Taipei).
+// Upgrade to Vercel Pro if you want a higher cadence.
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { apifyStartRun, ApifyError } from '@/lib/apify/api';
+import { reconcilePendingApifyRuns } from '@/lib/apify/reconcile';
 import { SCRAPE_PROFILE_ENGAGEMENT_PAGE_FUNCTION } from '@/lib/apify/scrape-profile-engagement-page-function';
 
 export const runtime = 'nodejs';
@@ -55,7 +55,18 @@ export async function GET(req: Request) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // Pull skool creds (service role bypasses RLS, reads value column directly).
+  // STEP 1 — drain yesterday's in-flight Apify runs into the DB. On the
+  // Hobby plan this is the only cron we get, so reconcile gets bundled
+  // in. Errors here are non-fatal: even if reconcile is unhappy, we
+  // still want today's batch to fire.
+  let reconcileError: string | null = null;
+  try {
+    await reconcilePendingApifyRuns(supabase, apifyToken!);
+  } catch (e) {
+    reconcileError = e instanceof Error ? e.message : 'unknown';
+  }
+
+  // STEP 2 — pull skool creds for today's run (service role bypasses RLS).
   const [emailRow, pwRow] = await Promise.all([
     supabase.from('app_settings').select('value').eq('key', 'skool_email').maybeSingle(),
     supabase.from('app_settings').select('value').eq('key', 'skool_password').maybeSingle(),
@@ -81,7 +92,12 @@ export async function GET(req: Request) {
   }
   const handles = ((handlesRes ?? []) as Array<{ handle: string }>).map((r) => r.handle);
   if (handles.length === 0) {
-    return NextResponse.json({ ok: true, skipped: 'all_handles_fresh', at: new Date().toISOString() });
+    return NextResponse.json({
+      ok: true,
+      skipped: 'all_handles_fresh',
+      reconcile_error: reconcileError,
+      at: new Date().toISOString(),
+    });
   }
 
   const actorInput = {
@@ -124,7 +140,7 @@ export async function GET(req: Request) {
         mode: 'engagement_events_apify',
         batch_size: handles.length,
         only_linked: true,
-        trigger: 'cron_hourly',
+        trigger: 'cron_daily',
         apify_run_id: runMeta.id,
       },
     })
@@ -134,6 +150,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     ok: true,
     queued: true,
+    reconcile_error: reconcileError,
     run_id: (runRow as { id: string } | null)?.id ?? null,
     apify_run_id: runMeta.id,
     batch_size: handles.length,
