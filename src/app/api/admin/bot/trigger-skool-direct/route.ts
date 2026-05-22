@@ -35,18 +35,21 @@ const COMMUNITY_SLUG = 'nmo';
 const DEFAULT_PAGES = 5;
 const MAX_PAGES = 20;
 
-async function requireAdmin() {
+// Any authenticated user can trigger — rate-limit (below) prevents abuse.
+// Admins get higher pages-per-call + can bypass the cooldown via ?force=1.
+async function requireAuth() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false as const, status: 401, error: 'not_authenticated' };
-  const { data: admin } = await supabase
+  const { data: adminRow } = await supabase
     .from('admin_users')
     .select('user_id')
     .eq('user_id', user.id)
     .maybeSingle();
-  if (!admin) return { ok: false as const, status: 403, error: 'not_admin' };
-  return { ok: true as const, userSupabase: supabase, userId: user.id };
+  return { ok: true as const, userId: user.id, isAdmin: !!adminRow };
 }
+
+const RATE_LIMIT_MS = 30 * 60_000; // 30 min cooldown between auto-syncs
 
 interface EventRow {
   user_id: null;
@@ -108,32 +111,12 @@ function buildRowsForPost(p: SkoolPost): EventRow[] {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireAdmin();
+  const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  // 1. Pull auth_token via the admin-gated RPC (user supabase, has session).
-  const tokenRes = await auth.userSupabase.rpc('admin_get_setting', {
-    p_key: 'skool_auth_token',
-  });
-  const authToken = (tokenRes.data as string | null) ?? null;
-  if (!authToken) {
-    return NextResponse.json(
-      {
-        error: 'settings_missing',
-        missing: ['skool_auth_token'],
-        hint: 'Paste the watcher account auth_token JWT in /admin → Integrations.',
-      },
-      { status: 412 },
-    );
-  }
-
-  // 2. Read ?pages=N (default 5, cap MAX_PAGES).
-  const url = new URL(req.url);
-  const requested = parseInt(url.searchParams.get('pages') ?? '', 10);
-  const pages = Math.max(1, Math.min(MAX_PAGES, isNaN(requested) ? DEFAULT_PAGES : requested));
-
-  // 3. Service-role client for the bulk insert (bypasses RLS on
-  //    engagement_events without needing per-row policies).
+  // Service-role client for everything below — token lookup, rate-limit
+  // query, bulk insert. Avoids the admin_get_setting RPC's is_admin()
+  // gate so any signed-in user can tickle the sync.
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) {
@@ -146,12 +129,69 @@ export async function POST(req: Request) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  // 1. Parse query params. Non-admins always get 3 pages; admins choose
+  //    via ?pages=N and can bypass the cooldown with ?force=1.
+  const url = new URL(req.url);
+  const force = auth.isAdmin && url.searchParams.get('force') === '1';
+  const requested = parseInt(url.searchParams.get('pages') ?? '', 10);
+  const pages = auth.isAdmin
+    ? Math.max(1, Math.min(MAX_PAGES, isNaN(requested) ? DEFAULT_PAGES : requested))
+    : 3;
+
+  // 2. Rate-limit — skip if a successful skool_direct_api run finished
+  //    within the cooldown. Prevents thundering-herd on first dashboard
+  //    visit of the day when 100 users land at once.
+  if (!force) {
+    const cutoffIso = new Date(Date.now() - RATE_LIMIT_MS).toISOString();
+    const { data: recentRuns } = await service
+      .from('bot_runs')
+      .select('id, finished_at, notes')
+      .eq('status', 'success')
+      .gte('finished_at', cutoffIso)
+      .order('finished_at', { ascending: false })
+      .limit(10);
+    const skoolRecent = (recentRuns ?? []).find((r) => {
+      const n = (r as { notes?: Record<string, unknown> }).notes;
+      return n && typeof n === 'object' && (n as Record<string, unknown>).mode === 'skool_direct_api';
+    });
+    if (skoolRecent) {
+      return NextResponse.json({
+        ok: true,
+        skipped: 'recent',
+        last_run_at: (skoolRecent as { finished_at: string }).finished_at,
+      });
+    }
+  }
+
+  // 3. Pull auth_token via service-role (bypasses RLS, no admin check).
+  const { data: tokenRow } = await service
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'skool_auth_token')
+    .maybeSingle();
+  const authToken = (tokenRow as { value: string } | null)?.value ?? null;
+  if (!authToken) {
+    return NextResponse.json(
+      {
+        error: 'settings_missing',
+        missing: ['skool_auth_token'],
+        hint: 'Paste the watcher account auth_token JWT in /admin → Integrations or run the seed SQL.',
+      },
+      { status: 412 },
+    );
+  }
+
   // 4. Open a bot_runs row for observability.
   const { data: runRow } = await service
     .from('bot_runs')
     .insert({
       status: 'running',
-      notes: { mode: 'skool_direct_api', pages, community: COMMUNITY_SLUG },
+      notes: {
+        mode: 'skool_direct_api',
+        pages,
+        community: COMMUNITY_SLUG,
+        triggered_by: auth.isAdmin ? (force ? 'admin_force' : 'admin') : 'user_auto_sync',
+      },
     })
     .select('id')
     .single();

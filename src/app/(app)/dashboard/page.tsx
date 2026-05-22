@@ -4,6 +4,7 @@ import { Flame, Trophy, Target, ArrowRight, ExternalLink, Activity, MessageSquar
 import { createClient } from '@/lib/supabase/server';
 import { TaskItem } from '@/components/roadmap/TaskItem';
 import { RefreshEngagementButton } from '@/components/RefreshEngagementButton';
+import { AutoSyncTickle } from '@/components/AutoSyncTickle';
 import { TRACK_NAMES_ZH } from '@/lib/roadmap/generator';
 import { ensureCurrentRoadmap } from '@/lib/roadmap/auto-regenerate';
 import { getT } from '@/lib/i18n/server';
@@ -86,6 +87,9 @@ export default async function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        {/* Best-effort background sync: fires once on mount, rate-limited
+            server-side to 30 min between actual Skool API calls. */}
+        <AutoSyncTickle />
         <div className="mb-8 animate-slide-up flex items-start gap-4">
           {profile.skool_avatar_url && (
             profile.skool_handle ? (
