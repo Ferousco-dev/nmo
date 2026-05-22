@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { TaskItem } from '@/components/roadmap/TaskItem';
 import { RefreshEngagementButton } from '@/components/RefreshEngagementButton';
 import { AutoSyncTickle } from '@/components/AutoSyncTickle';
+import { SkoolSnapshotCard } from '@/components/dashboard/SkoolSnapshotCard';
 import { TRACK_NAMES_ZH } from '@/lib/roadmap/generator';
 import { ensureCurrentRoadmap } from '@/lib/roadmap/auto-regenerate';
 import { getT } from '@/lib/i18n/server';
@@ -171,6 +172,9 @@ export default async function DashboardPage() {
             sublabel={`${completedTasks} / ${totalTasks}`}
           />
         </div>
+
+        {/* Live Skool snapshot — per-user fetch on mount, clean error states */}
+        <SkoolSnapshotCard />
 
         {/* Engagement breakdown */}
         <div className="card-premium p-6 md:p-8 mb-6">

@@ -175,3 +175,78 @@ export function parseSpData(raw: string | undefined): { pts: number; lv: number 
     return null;
   }
 }
+
+export interface UserSkoolSnapshot {
+  handle: string;
+  firstName: string | null;
+  lastName: string | null;
+  bio: string | null;
+  location: string | null;
+  avatarUrl: string | null;
+  /** Skool's own per-user score, parsed from spData. */
+  skoolPts: number | null;
+  skoolLv: number | null;
+  /** Unix-microseconds-ish timestamp Skool exposes; null when never seen. */
+  lastOffline: number | null;
+  recentPosts: Array<{
+    id: string;
+    title: string | null;
+    upvotes: number;
+    comments: number;
+    createdAt: string;
+  }>;
+}
+
+/**
+ * Per-user snapshot for the dashboard. Combines:
+ *   - members.json  → static profile (bio, location, spData)
+ *   - feed page 1   → recent posts by this user (capped at 5)
+ *
+ * Designed for the dashboard mount call — sub-second total, no DB writes,
+ * throws SkoolApiError on auth/geo issues for the route handler to surface.
+ */
+export async function fetchUserSkoolSnapshot(
+  authToken: string,
+  communitySlug: string,
+  handle: string,
+): Promise<UserSkoolSnapshot | null> {
+  const normHandle = handle.trim().toLowerCase();
+  if (!normHandle) return null;
+
+  const [members, feed] = await Promise.all([
+    fetchMembersPage(authToken, communitySlug),
+    fetchFeedPage(authToken, communitySlug, 1),
+  ]);
+
+  const member = members.find((m) => (m.name ?? '').toLowerCase() === normHandle);
+  if (!member) {
+    // Not in current members page — caller can retry with pagination later.
+    // For now we still return whatever we have from the feed.
+  }
+
+  const sp = parseSpData(member?.metadata?.spData);
+  const recent = feed.posts
+    .filter((p) => (p.user?.name ?? '').toLowerCase() === normHandle)
+    .slice(0, 5)
+    .map((p) => ({
+      id: p.id,
+      title: p.metadata.title ?? null,
+      upvotes: p.metadata.upvotes ?? 0,
+      comments: p.metadata.comments ?? 0,
+      createdAt: p.createdAt,
+    }));
+
+  return {
+    handle: normHandle,
+    firstName: member?.firstName ?? null,
+    lastName: member?.lastName ?? null,
+    bio: member?.metadata?.bio ?? null,
+    location: (member?.metadata as { location?: string } | undefined)?.location ?? null,
+    avatarUrl: member?.metadata?.pictureProfile ?? member?.metadata?.pictureBubble ?? null,
+    skoolPts: sp?.pts ?? null,
+    skoolLv: sp?.lv ?? null,
+    lastOffline:
+      (member?.metadata as { lastOffline?: number } | undefined)?.lastOffline ?? null,
+    recentPosts: recent,
+  };
+}
