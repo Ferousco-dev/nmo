@@ -50,7 +50,7 @@ interface StatusResponse {
   nmo_members: NmoSnap;
 }
 
-type ActionKey = 'members' | 'backfill' | 'engagement';
+type ActionKey = 'members' | 'backfill' | 'engagement' | 'direct';
 
 function relTime(iso: string | null): string {
   if (!iso) return '—';
@@ -121,7 +121,9 @@ export function BotSyncCard() {
         ? '/api/admin/bot/trigger-members-apify'
         : action === 'backfill'
           ? '/api/admin/bot/trigger-backfill-avatars-apify'
-          : '/api/admin/bot/trigger-engagement-apify';
+          : action === 'engagement'
+            ? '/api/admin/bot/trigger-engagement-apify'
+            : '/api/admin/bot/trigger-skool-direct?pages=5';
     try {
       const res = await fetch(url, { method: 'POST' });
       const data = await res.json();
@@ -216,6 +218,20 @@ export function BotSyncCard() {
               <RefreshCw className="h-3.5 w-3.5" />
             )}
             Refresh engagement
+          </button>
+          <button
+            type="button"
+            onClick={() => trigger('direct')}
+            disabled={busyAction !== null}
+            className="inline-flex items-center gap-1.5 px-3 h-9 rounded-md text-xs font-medium border border-accent/40 bg-accent/5 text-accent hover:bg-accent/15 transition-colors disabled:opacity-50 whitespace-nowrap"
+            title="Pull recent posts via Skool's direct API (sub-second per page, no Apify quota)"
+          >
+            {busyAction === 'direct' ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Play className="h-3.5 w-3.5" />
+            )}
+            Sync direct (Skool API)
           </button>
         </div>
       </div>

@@ -23,8 +23,9 @@ next-env.d.ts
 .claude/
 .idea/
 
-# Companion bot lives in its own repo: https://github.com/Ferousco-dev/nom-bot
-bot/
+# Companion bot lives in its own repo: https://github.com/Ferousco-dev/nom-bot.
+# Anchored to repo root so it doesn't accidentally swallow `src/app/api/admin/bot/`.
+/bot/
 
 # Local clone of the louiewoof2026/skool-mcp server used for live API
 # exploration via Claude Code. Not part of this project's deployable.

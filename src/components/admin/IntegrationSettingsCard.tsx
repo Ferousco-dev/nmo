@@ -35,6 +35,12 @@ const KEYS = [
     placeholder: '••••••••',
     help: 'Stored encrypted at rest in Supabase; never sent to the browser.',
   },
+  {
+    key: 'skool_auth_token',
+    label: 'Skool auth_token (cookie JWT)',
+    placeholder: 'eyJhbGc…',
+    help: 'JWT from the watcher account\'s skool.com session (DevTools → Application → Cookies → auth_token). Lets the server call Skool\'s data routes directly — sub-second per page, no Apify quota. Expires ~yearly; rotate when 401s appear.',
+  },
 ] as const;
 
 interface SettingMeta {

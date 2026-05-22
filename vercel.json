@@ -12,6 +12,7 @@
     "src/app/api/admin/bot/trigger-engagement-apify/route.ts": { "maxDuration": 30 },
     "src/app/api/me/refresh-engagement/route.ts": { "maxDuration": 30 },
     "src/app/api/cron/reconcile/route.ts": { "maxDuration": 60 },
-    "src/app/api/cron/scrape-engagement/route.ts": { "maxDuration": 60 }
+    "src/app/api/cron/scrape-engagement/route.ts": { "maxDuration": 60 },
+    "src/app/api/admin/bot/trigger-skool-direct/route.ts": { "maxDuration": 60 }
   }
 }
