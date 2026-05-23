@@ -35,3 +35,8 @@ skool-mcp/
 catch.js
 user.json
 *.dump.json
+# DevTools network captures — often contain auth_token / cookies
+# Captured with "Copy as cURL" or "Save as HAR" during reverse-engineering
+com.sh
+us.sh
+*.devtools.sh

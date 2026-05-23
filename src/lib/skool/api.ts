@@ -11,6 +11,7 @@
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const BASE = 'https://www.skool.com';
+const API2_BASE = 'https://api2.skool.com';
 const BUILD_ID_TTL_MS = 30 * 60_000;
 
 let buildIdCache: { id: string; fetchedAt: number } | null = null;
@@ -140,16 +141,26 @@ interface SkoolMember {
 interface MembersResponse {
   pageProps: {
     users: SkoolMember[];
+    page?: number;
+    totalPages?: number;
+    total?: number;
+    itemsPerPage?: number;
   };
 }
 
-/** Fetch the community members page (currently single-page — Skool paginates differently). */
+/**
+ * Fetch one page of community members (30 per page by default).
+ * Pagination via `?page=N` — same convention as feed pages.
+ * Returns the users plus `totalPages` so callers can iterate.
+ */
 export async function fetchMembersPage(
   authToken: string,
   communitySlug: string,
-): Promise<SkoolMember[]> {
+  page = 1,
+): Promise<{ users: SkoolMember[]; totalPages: number }> {
   const buildId = await getBuildId(authToken);
   const url = new URL(`/_next/data/${buildId}/${communitySlug}/-/members.json`, BASE);
+  if (page > 1) url.searchParams.set('page', String(page));
   const res = await fetch(url, {
     headers: {
       'User-Agent': USER_AGENT,
@@ -161,7 +172,39 @@ export async function fetchMembersPage(
     throw new SkoolApiError(`members fetch failed`, res.status, (await res.text()).slice(0, 200));
   }
   const j = (await res.json()) as MembersResponse;
-  return j.pageProps.users ?? [];
+  return {
+    users: j.pageProps.users ?? [],
+    totalPages: j.pageProps.totalPages ?? 1,
+  };
+}
+
+/**
+ * Locate a single member by Skool user_id, paginating until found or
+ * all pages exhausted. Used by login to confirm community membership.
+ *
+ * Returns the member row plus the page they were found on (useful for
+ * logging / debugging — page 1 is the common case since Skool tends to
+ * surface the calling user first).
+ */
+export async function findMemberById(
+  authToken: string,
+  communitySlug: string,
+  userId: string,
+  opts: { maxPages?: number } = {},
+): Promise<{ member: SkoolMember; foundOnPage: number } | null> {
+  const maxPages = opts.maxPages ?? 50; // hard cap so a runaway never loops forever
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const { users, totalPages: tp } = await fetchMembersPage(authToken, communitySlug, page);
+    totalPages = tp;
+    const hit = users.find((u) => u.id === userId);
+    if (hit) return { member: hit, foundOnPage: page };
+    page += 1;
+  } while (page <= Math.min(totalPages, maxPages));
+
+  return null;
 }
 
 /** Pulled out so unit tests / debug routes can parse without re-implementing. */
@@ -213,12 +256,12 @@ export async function fetchUserSkoolSnapshot(
   const normHandle = handle.trim().toLowerCase();
   if (!normHandle) return null;
 
-  const [members, feed] = await Promise.all([
+  const [membersResult, feed] = await Promise.all([
     fetchMembersPage(authToken, communitySlug),
     fetchFeedPage(authToken, communitySlug, 1),
   ]);
 
-  const member = members.find((m) => (m.name ?? '').toLowerCase() === normHandle);
+  const member = membersResult.users.find((m) => (m.name ?? '').toLowerCase() === normHandle);
   if (!member) {
     // Not in current members page — caller can retry with pagination later.
     // For now we still return whatever we have from the feed.
@@ -248,5 +291,212 @@ export async function fetchUserSkoolSnapshot(
     lastOffline:
       (member?.metadata as { lastOffline?: number } | undefined)?.lastOffline ?? null,
     recentPosts: recent,
+  };
+}
+
+// =============================================================
+// api2.skool.com — Skool's actual backend, not the Next.js
+// frontend at www.skool.com.
+//
+// Why this section exists separately: the www.skool.com data
+// routes (above) require fetching a buildId from the homepage,
+// which is geo-routed and often serves a maintenance redirect to
+// server-side requests. api2.skool.com is the real REST API and
+// is far more reliable from a server.
+//
+// Field naming differs: api2 uses snake_case (first_name,
+// picture_profile) where the Next.js data layer uses camelCase
+// (firstName, pictureProfile). Interfaces below match what api2
+// actually returns.
+// =============================================================
+
+interface Api2User {
+  id: string;
+  name: string; // handle
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  metadata?: {
+    bio?: string;
+    location?: string;
+    picture_profile?: string;
+    picture_bubble?: string;
+  };
+}
+
+interface Api2Group {
+  id: string;
+  name: string; // slug ("nmo")
+  metadata?: {
+    display_name?: string;
+  };
+}
+
+async function api2Fetch(path: string, authToken: string): Promise<unknown> {
+  const res = await fetch(`${API2_BASE}${path}`, {
+    headers: {
+      'User-Agent': USER_AGENT,
+      Cookie: `auth_token=${authToken}`,
+      Origin: BASE,
+      Accept: 'application/json',
+    },
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    throw new SkoolApiError(
+      `api2 ${path} failed`,
+      res.status,
+      (await res.text()).slice(0, 200),
+    );
+  }
+  return res.json();
+}
+
+/** Fetch a Skool user's profile by their 32-char hex user_id. */
+export async function fetchUserById(
+  authToken: string,
+  userId: string,
+): Promise<Api2User> {
+  return (await api2Fetch(`/users/${userId}`, authToken)) as Api2User;
+}
+
+/**
+ * Confirm a user belongs to a specific community by checking
+ * their groups list for a matching slug. Single API call,
+ * no pagination.
+ */
+export async function userIsInCommunity(
+  authToken: string,
+  userId: string,
+  communitySlug: string,
+): Promise<boolean> {
+  const data = (await api2Fetch(`/users/${userId}/groups`, authToken)) as {
+    groups?: Api2Group[];
+  };
+  return (data.groups ?? []).some((g) => g.name === communitySlug);
+}
+
+// =============================================================
+// User activity snapshot — pulls aggregate stats from the
+// Skool profile page JSON in ONE call:
+//
+//   GET https://www.skool.com/_next/data/<buildId>/%40<handle>.json?g=<slug>&group=%40<handle>
+//
+// Returned by Skool inside pageProps (totals live under either
+// `pageProps.renderData.user.*` or `pageProps.currentUser.*` —
+// we accept either since Skool has shipped both shapes).
+//
+// Skool computes all the aggregates server-side: totalPosts,
+// totalContributions, plus the `spData` JSON string containing
+// {pts, lv, pcl, pnl, role}. That's a complete activity
+// snapshot per user without ever paginating the community feed.
+//
+// Reaches www.skool.com (not api2), so it inherits the buildId
+// flow and may hit the maintenance redirect from data-center
+// IPs. Caller should treat SkoolApiError as recoverable.
+// =============================================================
+
+interface SkoolSpData {
+  pts: number;
+  lv: number;
+  pcl: number;
+  pnl: number;
+  role: number;
+}
+
+export interface UserActivitySnapshot {
+  totalPosts: number | null;
+  totalContributions: number | null;
+  totalFollowers: number | null;
+  totalFollowing: number | null;
+  totalGroups: number | null;
+  pts: number | null;
+  lv: number | null;
+  pcl: number | null;
+  pnl: number | null;
+  role: number | null;
+  dailyActivities: unknown | null; // raw object — heatmap consumer parses
+}
+
+function parseSpDataFull(raw: unknown): SkoolSpData | null {
+  if (typeof raw !== 'string') return null;
+  try {
+    const j = JSON.parse(raw) as Partial<SkoolSpData>;
+    if (
+      typeof j.pts !== 'number' ||
+      typeof j.lv !== 'number' ||
+      typeof j.pcl !== 'number' ||
+      typeof j.pnl !== 'number' ||
+      typeof j.role !== 'number'
+    ) {
+      return null;
+    }
+    return j as SkoolSpData;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch a single user's full activity snapshot from their Skool
+ * profile page. Requires `authToken` belonging to a user who can
+ * see the target profile (typically the user themself).
+ */
+export async function fetchUserActivityProfile(
+  authToken: string,
+  communitySlug: string,
+  handle: string,
+): Promise<UserActivitySnapshot> {
+  const buildId = await getBuildId(authToken);
+  const encodedHandle = `%40${encodeURIComponent(handle)}`;
+  const url = new URL(
+    `/_next/data/${buildId}/${encodedHandle}.json`,
+    BASE,
+  );
+  url.searchParams.set('g', communitySlug);
+  url.searchParams.set('group', `@${handle}`);
+
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': USER_AGENT,
+      Cookie: `auth_token=${authToken}`,
+      Accept: 'application/json',
+    },
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    throw new SkoolApiError(
+      `profile JSON fetch failed`,
+      res.status,
+      (await res.text()).slice(0, 200),
+    );
+  }
+
+  // pageProps shape varies — totals + spData can live on
+  // currentUser OR renderData.user. Try both, prefer renderData.
+  type Maybe = Record<string, unknown> | undefined;
+  const root = (await res.json()) as { pageProps?: Record<string, unknown> };
+  const pp = (root.pageProps ?? {}) as Record<string, unknown>;
+  const rd = (pp.renderData as { user?: Record<string, unknown> } | undefined)?.user;
+  const cu = pp.currentUser as Maybe;
+  const u: Record<string, unknown> = { ...(cu ?? {}), ...(rd ?? {}) };
+
+  const numOrNull = (v: unknown) => (typeof v === 'number' ? v : null);
+  const sp = parseSpDataFull(
+    (u.metadata as { spData?: unknown } | undefined)?.spData,
+  );
+
+  return {
+    totalPosts: numOrNull(u.totalPosts) ?? numOrNull(pp.total),
+    totalContributions: numOrNull(u.totalContributions),
+    totalFollowers: numOrNull(u.totalFollowers),
+    totalFollowing: numOrNull(u.totalFollowing),
+    totalGroups: numOrNull(u.totalGroups),
+    pts: sp?.pts ?? null,
+    lv: sp?.lv ?? null,
+    pcl: sp?.pcl ?? null,
+    pnl: sp?.pnl ?? null,
+    role: sp?.role ?? null,
+    dailyActivities: (u.dailyActivities ?? pp.dailyActivities) ?? null,
   };
 }

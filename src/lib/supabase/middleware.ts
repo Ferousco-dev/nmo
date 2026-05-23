@@ -36,6 +36,9 @@ export async function updateSession(request: NextRequest) {
     pathname === '/confirm' ||
     isAuthPage ||
     pathname.startsWith('/api/skool/search') ||
+    // Skool-credential login route: hit by anonymous visitors from /login.
+    // It mints the Supabase session itself, so it must not be gated.
+    pathname === '/api/auth/skool-login' ||
     // Cron routes authenticate themselves via CRON_SECRET; they're hit
     // by Vercel's cron infra with no Supabase session. Without this the
     // middleware 307s them to /login and the cron never runs.
@@ -52,10 +55,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Signed in & on auth page → redirect to dashboard
+  // Signed in & on auth page → bounce to /, which routes through the
+  // identity-confirm / onboarding / dashboard logic in one place.
   if (user && isAuthPage) {
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    url.pathname = '/';
     return NextResponse.redirect(url);
   }
 

@@ -16,7 +16,7 @@ export const t = {
   },
   auth: {
     loginTitle: "Welcome back",
-    loginSubtitle: "Sign in to continue your journey",
+    loginSubtitle: "Sign in with your Skool account",
     signupTitle: "Create your account",
     signupSubtitle: "Join the NMO community and start your 30-day journey",
     email: "Email",
@@ -29,6 +29,14 @@ export const t = {
     signupLink: "Sign up",
     loading: "Working…",
     invalidCreds: "Invalid email or password",
+    notAMember: "This Skool account is not a member of NMO",
+    skoolUnreachable: "Couldn't reach Skool — try again in a moment",
+    networkError: "Network error — check your connection",
+    confirmIdentityTitle: "Welcome — is this you?",
+    confirmIdentitySubtitle: "Confirm your Skool identity so we know we got the right person.",
+    confirmYes: "Yes, that's me",
+    confirmNo: "No, sign me out",
+    confirming: "Confirming…",
     signupSuccess: "Account created! Check your email to verify.",
     skoolEmailNotice: "Important: use the same email as your Skool account",
     skoolEmailNoticeDesc:

@@ -1,30 +1,29 @@
 'use client';
 
-// Fire-and-forget background sync on dashboard mount.
+// Fire-and-forget per-user engagement refresh on dashboard mount.
 //
-// The trigger-skool-direct route is rate-limited server-side (30 min
-// cooldown via bot_runs lookup), so even with 100 concurrent dashboard
-// loads only one actually fires a Skool API call — the rest see
-// "skipped: recent" and return immediately.
+// Calls /api/me/refresh-engagement, which queues an Apify run scoped
+// to the current user's skool_handle. Rate-limited server-side (10 min
+// cooldown via bot_runs lookup), so re-mounts within the window get
+// a "cooldown" response and bail — no extra Apify cost.
 //
-// We deliberately do NOT await: the user's dashboard renders without
-// waiting for the sync to complete. Vercel keeps the function running
-// server-side until it finishes, regardless of whether the browser is
-// still listening. Worst case: user navigates away, fetch aborts on
-// the wire, but the server-side work runs to completion.
+// We deliberately do NOT await: the dashboard renders immediately
+// and the Apify run finishes ~1-2 minutes later, populating
+// engagement_events. The next page load shows the fresh numbers.
+//
+// The daily cron is the safety net for users who never log in.
 
 import { useEffect } from 'react';
 
 export function AutoSyncTickle() {
   useEffect(() => {
-    // Once per mount. React Strict Mode runs effects twice in dev —
-    // the rate-limit makes that harmless (second call sees the first
-    // run's bot_run row and bails).
-    void fetch('/api/admin/bot/trigger-skool-direct', {
+    // React Strict Mode fires effects twice in dev — the cooldown on
+    // the route makes the second call a no-op.
+    void fetch('/api/me/refresh-engagement', {
       method: 'POST',
       keepalive: true,
     }).catch(() => {
-      // Silent: this is best-effort. The daily cron is the safety net.
+      // Silent: best-effort. Daily cron is the safety net.
     });
   }, []);
 

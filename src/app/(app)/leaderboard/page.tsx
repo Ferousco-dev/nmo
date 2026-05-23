@@ -670,13 +670,18 @@ function ActivitySection({
             const isMe = entry.user_id === currentUserId;
             const name = entry.display_name || (entry.skool_handle ? `@${entry.skool_handle}` : '匿名');
             const skoolUrl = entry.skool_handle ? `https://www.skool.com/@${entry.skool_handle}` : null;
+            // Conditional element: render <a> only when there's a real
+            // URL. Plain <div> otherwise — avoids an onClick handler in
+            // a server component (which Next 14 rejects with
+            // "Event handlers cannot be passed to Client Component props").
+            const RowTag = skoolUrl ? 'a' : 'div';
+            const rowProps = skoolUrl
+              ? { href: skoolUrl, target: '_blank' as const, rel: 'noopener noreferrer' }
+              : {};
             return (
               <li key={entry.user_id}>
-                <a
-                  href={skoolUrl ?? '#'}
-                  target={skoolUrl ? '_blank' : undefined}
-                  rel={skoolUrl ? 'noopener noreferrer' : undefined}
-                  onClick={(e) => { if (!skoolUrl) e.preventDefault(); }}
+                <RowTag
+                  {...rowProps}
                   className={cn(
                     'flex items-center gap-3 p-3 rounded-lg border transition-colors',
                     skoolUrl && 'cursor-pointer',
@@ -717,7 +722,7 @@ function ActivitySection({
                     <div className="font-mono font-bold text-ink">{entry.engagement_score.toLocaleString()}</div>
                     <div className="text-[10px] text-ink-dim uppercase tracking-wider">{t.leaderboard.score}</div>
                   </div>
-                </a>
+                </RowTag>
               </li>
             );
           })}

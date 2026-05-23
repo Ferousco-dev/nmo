@@ -12,6 +12,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { SCRAPE_PROFILE_ENGAGEMENT_PAGE_FUNCTION } from '@/lib/apify/scrape-profile-engagement-page-function';
 import { apifyStartRun, ApifyError } from '@/lib/apify/api';
 
@@ -138,26 +139,42 @@ export async function POST() {
     return NextResponse.json({ error: 'apify_unreachable', detail: msg }, { status: 502 });
   }
 
-  const { data: runRow } = await supabase
-    .from('bot_runs')
-    .insert({
-      status: 'running',
-      notes: {
-        mode: 'engagement_events_apify',
-        batch_size: 1,
-        only_linked: true,
-        triggered_by: 'user_self_refresh',
-        explicit_handles: [handle],
-        apify_run_id: runMeta.id,
-      },
-    })
-    .select('id')
-    .single();
+  // bot_runs has SELECT-only RLS — needs service-role to insert.
+  // Without this row, the reconciler can't link the Apify dataset
+  // back to ingest into engagement_events.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  let runRow: { id: string } | null = null;
+  if (supabaseUrl && serviceKey) {
+    const service = createServiceClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data, error: runErr } = await service
+      .from('bot_runs')
+      .insert({
+        status: 'running',
+        notes: {
+          mode: 'engagement_events_apify',
+          batch_size: 1,
+          only_linked: true,
+          triggered_by: 'user_self_refresh',
+          explicit_handles: [handle],
+          apify_run_id: runMeta.id,
+        },
+      })
+      .select('id')
+      .single();
+    if (runErr) {
+      console.error('[refresh-engagement] bot_runs insert failed', runErr.message);
+    } else {
+      runRow = data as { id: string };
+    }
+  }
 
   return NextResponse.json({
     ok: true,
     queued: true,
-    run_id: (runRow as { id: string } | null)?.id ?? null,
+    run_id: runRow?.id ?? null,
     apify_run_id: runMeta.id,
     apify_status: runMeta.status,
     handle,

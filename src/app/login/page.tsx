@@ -1,9 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -13,7 +11,6 @@ import { useT } from '@/lib/i18n/client';
 export default function LoginPage() {
   const t = useT();
   const router = useRouter();
-  const supabase = createClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,26 +21,57 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      setError(t.auth.invalidCreds);
+    let res: Response;
+    try {
+      res = await fetch('/api/auth/skool-login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+    } catch {
+      setError(t.auth.networkError);
       setLoading(false);
       return;
     }
 
-    // Check onboarding status
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('onboarding_completed')
-        .eq('id', user.id)
-        .single();
+    const data = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      error?: string;
+      step?: string;
+      detail?: string;
+      status?: number;
+      nextPath?: string;
+      onboardingCompleted?: boolean;
+      identityConfirmed?: boolean;
+      skoolUserId?: string;
+      handle?: string;
+    };
 
-      router.push(profile?.onboarding_completed ? '/dashboard' : '/questionnaire');
-      router.refresh();
+    // Dev-time visibility: log the full response so testing surfaces
+    // the failing step. Remove once flow is validated.
+    // eslint-disable-next-line no-console
+    console.log('[login] /api/auth/skool-login →', res.status, data);
+
+    if (!res.ok || !data.ok) {
+      // Map server error codes to user-facing copy. Anything unmapped
+      // falls through to a generic invalid-creds message.
+      const code = data.error ?? '';
+      if (code === 'not_a_member') setError(t.auth.notAMember);
+      else if (code === 'skool_unreachable' || code === 'skool_error')
+        setError(t.auth.skoolUnreachable);
+      else setError(t.auth.invalidCreds);
+      setLoading(false);
+      return;
     }
+
+    // Fire-and-forget per-user engagement refresh via Apify. The
+    // route is cooldown-throttled (10 min) so re-logins don't spam
+    // runs. Errors don't block login — the daily cron is the
+    // safety net.
+    fetch('/api/me/refresh-engagement', { method: 'POST' }).catch(() => {});
+
+    router.push(data.nextPath ?? '/dashboard');
+    router.refresh();
   };
 
   return (
@@ -91,12 +119,6 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-ink-muted">
-          {t.auth.noAccount}{' '}
-          <Link href="/signup" className="text-accent hover:text-accent-glow font-medium">
-            {t.auth.signupLink}
-          </Link>
-        </p>
       </div>
     </div>
   );

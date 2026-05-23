@@ -1,25 +1,16 @@
-// Per-user Skool snapshot for the dashboard.
+// Per-user dashboard snapshot — served from our own DB, NOT from
+// www.skool.com (which is gated by AWS WAF and unreachable from
+// any server). The Apify cron + on-login refresh populate
+// engagement_events; the engagement_grades view aggregates them.
 //
-// Mounted via <SkoolSnapshotCard /> on /dashboard. Fires once per page
-// mount, returns this user's live Skool profile data (location, bio,
-// Skool pts/lv, recent posts). Errors surface as structured JSON so
-// the card can render a clean message instead of falling silent.
-//
-// Auth: signed-in user only. The user must have linked their
-// skool_handle in /profile before this is meaningful — when unset
-// we return { ok: true, hasHandle: false } so the card can prompt
-// the user to link.
+// Shape stays compatible with <SkoolSnapshotCard /> so the
+// existing UI renders unchanged.
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
-import { fetchUserSkoolSnapshot, SkoolApiError } from '@/lib/skool/api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 15;
-
-const COMMUNITY_SLUG = 'nmo';
 
 export async function GET() {
   const supabase = createClient();
@@ -30,68 +21,95 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('skool_handle')
+    .select('skool_handle, skool_avatar_url, display_name')
     .eq('id', user.id)
     .maybeSingle();
-  const handle = (profile as { skool_handle: string | null } | null)?.skool_handle ?? null;
 
-  if (!handle) {
+  const p = profile as {
+    skool_handle: string | null;
+    skool_avatar_url: string | null;
+    display_name: string | null;
+  } | null;
+
+  if (!p?.skool_handle) {
     return NextResponse.json({ ok: true, hasHandle: false });
   }
 
-  // Service-role client to read app_settings (skool_auth_token).
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey) {
-    return NextResponse.json(
-      { ok: false, error: 'server_env_missing' },
-      { status: 500 },
-    );
-  }
-  const service = createServiceClient(supabaseUrl, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
+  // Pull aggregates + the last 5 posts from our DB in parallel.
+  // engagement_grades is the view; engagement_events is the raw log.
+  const [gradesRes, eventsRes] = await Promise.all([
+    supabase
+      .from('engagement_grades')
+      .select('posts_count, comments_count, replies_count, likes_count, engagement_score, last_active_at')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('engagement_events')
+      .select('source_id, target_post_id, content_excerpt, occurred_at, raw')
+      .eq('user_id', user.id)
+      .eq('event_type', 'post')
+      .order('occurred_at', { ascending: false })
+      .limit(5),
+  ]);
+
+  const grades = (gradesRes.data ?? null) as {
+    posts_count: number | null;
+    comments_count: number | null;
+    replies_count: number | null;
+    likes_count: number | null;
+    engagement_score: number | null;
+    last_active_at: string | null;
+  } | null;
+
+  const events = (eventsRes.data ?? []) as Array<{
+    source_id: string | null;
+    target_post_id: string | null;
+    content_excerpt: string | null;
+    occurred_at: string;
+    raw: Record<string, unknown> | null;
+  }>;
+
+  const recentPosts = events.map((e) => {
+    const raw = e.raw ?? {};
+    const upvotes = typeof raw.likes_received === 'number' ? raw.likes_received : 0;
+    const comments = typeof raw.comments_received === 'number' ? raw.comments_received : 0;
+    const titleRaw = typeof raw.title === 'string' && raw.title.length > 0
+      ? raw.title
+      : (e.content_excerpt ?? '').slice(0, 80);
+    return {
+      id: e.target_post_id ?? e.source_id ?? '',
+      title: titleRaw || null,
+      upvotes,
+      comments,
+      createdAt: e.occurred_at,
+    };
   });
 
-  const { data: tokenRow } = await service
-    .from('app_settings')
-    .select('value')
-    .eq('key', 'skool_auth_token')
-    .maybeSingle();
-  const authToken = (tokenRow as { value: string } | null)?.value ?? null;
-  if (!authToken) {
-    return NextResponse.json(
-      { ok: false, error: 'no_auth_token', hint: 'Admin needs to set skool_auth_token.' },
-      { status: 412 },
-    );
-  }
+  const display = p.display_name ?? '';
+  const [firstName, ...rest] = display.split(/\s+/);
 
-  try {
-    const snapshot = await fetchUserSkoolSnapshot(authToken, COMMUNITY_SLUG, handle);
-    return NextResponse.json({ ok: true, hasHandle: true, snapshot });
-  } catch (e) {
-    if (e instanceof SkoolApiError) {
-      // 401 from Skool means our auth_token JWT expired.
-      if (e.status === 401 || e.status === 403) {
-        return NextResponse.json(
-          { ok: false, error: 'skool_auth_expired', hint: 'Admin needs to rotate skool_auth_token.' },
-          { status: 502 },
-        );
-      }
-      // 200 with maintenance HTML body → geo-block / WAF.
-      if (e.message.includes('buildId')) {
-        return NextResponse.json(
-          { ok: false, error: 'skool_geo_blocked' },
-          { status: 502 },
-        );
-      }
-      return NextResponse.json(
-        { ok: false, error: 'skool_unreachable', detail: e.bodyPreview.slice(0, 200) },
-        { status: 502 },
-      );
-    }
-    return NextResponse.json(
-      { ok: false, error: 'unknown', detail: (e as Error).message },
-      { status: 500 },
-    );
-  }
+  // lastOffline is in unix-microseconds in Skool's payload; we
+  // approximate from last_active_at so the card renders "X ago".
+  const lastOffline = grades?.last_active_at
+    ? new Date(grades.last_active_at).getTime() * 1000
+    : null;
+
+  return NextResponse.json({
+    ok: true,
+    hasHandle: true,
+    snapshot: {
+      handle: p.skool_handle,
+      firstName: firstName || null,
+      lastName: rest.join(' ') || null,
+      bio: null,
+      location: null,
+      avatarUrl: p.skool_avatar_url,
+      // engagement_score is our app-side weighted total; surfaced
+      // as skoolPts because the card already labels it as such.
+      skoolPts: grades?.engagement_score ?? null,
+      skoolLv: null, // Skool's native level isn't in our DB
+      lastOffline,
+      recentPosts,
+    },
+  });
 }
