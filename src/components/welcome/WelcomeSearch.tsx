@@ -168,7 +168,10 @@ export function WelcomeSearch({
   };
 
   const choose = (handle: string) => {
-    router.push(`/confirm?handle=${encodeURIComponent(handle)}`);
+    // Skip the /confirm intermediate — the login screen itself renders
+    // the matched member's avatar + name as confirmation, so this jump
+    // is one step shorter.
+    router.push(`/login?handle=${encodeURIComponent(handle)}`);
   };
 
   const showIdle = query.trim().length < MIN_QUERY_LEN;

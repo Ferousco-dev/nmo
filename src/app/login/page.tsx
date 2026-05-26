@@ -1,20 +1,63 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Logo } from '@/components/Logo';
 import { useT } from '@/lib/i18n/client';
 
+const HANDLE_REGEX = /^[a-zA-Z0-9_-]{2,40}$/;
+
+interface PrefilledMember {
+  handle: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
 export default function LoginPage() {
   const t = useT();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [prefilled, setPrefilled] = useState<PrefilledMember | null>(null);
+
+  // If we arrived from the welcome search with ?handle=…, fetch that
+  // member's profile from nmo_members so we can render an "is this you?"
+  // card above the form. Purely cosmetic confirmation — the actual login
+  // still validates email + password against api2.skool.com.
+  useEffect(() => {
+    const raw = (searchParams.get('handle') ?? '').trim().replace(/^@+/, '').toLowerCase();
+    if (!raw || !HANDLE_REGEX.test(raw)) {
+      setPrefilled(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/skool/search?handle=${encodeURIComponent(raw)}`);
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.ok && data.isMember) {
+          setPrefilled({
+            handle: data.handle,
+            displayName: data.displayName ?? null,
+            avatarUrl: data.avatarUrl ?? null,
+          });
+        }
+      } catch {
+        // Non-fatal: form still works without the preview card.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +136,30 @@ export default function LoginPage() {
           </h1>
           <p className="mt-2 text-ink-muted">{t.auth.loginSubtitle}</p>
         </div>
+
+        {/* "Is this you?" preview when arriving from /?handle=… */}
+        {prefilled && (
+          <div className="mb-5 flex items-center gap-3 rounded-lg border border-success/30 bg-success/5 p-4">
+            {prefilled.avatarUrl ? (
+              <img
+                src={prefilled.avatarUrl}
+                alt=""
+                decoding="async"
+                className="h-12 w-12 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-12 w-12 rounded-full bg-success/10 border border-success/40 flex items-center justify-center">
+                <ShieldCheck className="h-6 w-6 text-success" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-ink truncate">
+                {prefilled.displayName || `@${prefilled.handle}`}
+              </div>
+              <div className="text-xs text-ink-muted font-mono">@{prefilled.handle}</div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="card-premium p-6 sm:p-8 space-y-5">
           <Input
