@@ -36,7 +36,7 @@ export function BadgeRowActions({ badgeKey }: { badgeKey: string }) {
       onClick={onDelete}
       disabled={busy}
       aria-label={t.admin.badges.delete}
-      className="h-8 w-8 rounded-md text-ink-dim hover:text-danger hover:bg-danger/10 flex items-center justify-center transition-colors disabled:opacity-50"
+      className="h-10 w-10 rounded-md text-ink-dim hover:text-danger hover:bg-danger/10 flex items-center justify-center transition-colors disabled:opacity-50"
     >
       <Trash2 className="h-4 w-4" />
     </button>

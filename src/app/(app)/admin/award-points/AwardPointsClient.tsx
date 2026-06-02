@@ -7,6 +7,7 @@ import { Search, Gift, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useT } from '@/lib/i18n/client';
 
 interface ProfileHit {
   id: string;
@@ -18,6 +19,7 @@ interface ProfileHit {
 }
 
 export function AwardPointsClient() {
+  const t = useT();
   const supabase = createClient();
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<ProfileHit[]>([]);
@@ -94,27 +96,23 @@ export function AwardPointsClient() {
       <div className="space-y-1">
         <h1 className="font-display text-2xl font-bold flex items-center gap-2">
           <Gift className="h-6 w-6 text-accent" />
-          Award points
+          {t.admin.awardPoints.title}
         </h1>
-        <p className="text-sm text-ink-muted">
-          Super-admin only. Manual point awards land in the ledger with source
-          <code className="font-mono text-xs px-1 mx-1 rounded bg-bg-raised">admin_grant</code>
-          and bump the user's total instantly.
-        </p>
+        <p className="text-sm text-ink-muted">{t.admin.awardPoints.subtitle}</p>
       </div>
 
       <div className="card-premium p-5 space-y-4">
         <Input
-          label="Search by handle, email, or name"
+          label={t.admin.awardPoints.searchLabel}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="e.g. jack-liu-9368 or john@…"
+          placeholder={t.admin.awardPoints.searchPlaceholder}
           autoComplete="off"
         />
 
         {searching && (
           <p className="text-xs text-ink-dim flex items-center gap-2">
-            <Search className="h-3 w-3 animate-pulse" /> searching…
+            <Search className="h-3 w-3 animate-pulse" /> {t.admin.awardPoints.searching}
           </p>
         )}
 
@@ -166,34 +164,34 @@ export function AwardPointsClient() {
               </div>
             </div>
             <div className="text-right shrink-0">
-              <div className="text-xs text-ink-dim">Current</div>
+              <div className="text-xs text-ink-dim">{t.admin.awardPoints.currentLabel}</div>
               <div className="text-lg font-mono font-bold text-ink">{picked.total_points ?? 0}</div>
             </div>
             <button
               onClick={() => setPicked(null)}
               className="text-xs text-ink-dim hover:text-ink shrink-0"
             >
-              change
+              {t.admin.awardPoints.changeLink}
             </button>
           </div>
 
           <Input
-            label="Points to award (negative to deduct)"
+            label={t.admin.awardPoints.pointsLabel}
             type="number"
             value={points}
             onChange={(e) => setPoints(e.target.value)}
-            placeholder="e.g. 50  or  -10"
+            placeholder={t.admin.awardPoints.pointsPlaceholder}
             inputMode="numeric"
           />
           <Input
-            label="Reason (optional, shown in the ledger)"
+            label={t.admin.awardPoints.reasonLabel}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. event giveaway, manual correction…"
+            placeholder={t.admin.awardPoints.reasonPlaceholder}
           />
 
           <Button onClick={onAward} loading={submitting} disabled={!points} size="lg" className="w-full">
-            {submitting ? 'Awarding…' : 'Award points'}
+            {submitting ? t.admin.awardPoints.submitting : t.admin.awardPoints.submit}
           </Button>
         </div>
       )}

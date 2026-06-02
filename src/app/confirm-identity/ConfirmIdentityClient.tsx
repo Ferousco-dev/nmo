@@ -22,17 +22,34 @@ export function ConfirmIdentityClient({ handle, avatarUrl, skoolUrl, displayName
   const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const onConfirm = async () => {
     setLoading(true);
+    setError(null);
+    let res: Response;
     try {
-      const res = await fetch('/api/me/confirm-identity', { method: 'POST' });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; nextPath?: string };
-      router.push(data.nextPath ?? '/questionnaire');
-      router.refresh();
-    } finally {
+      res = await fetch('/api/me/confirm-identity', { method: 'POST' });
+    } catch {
+      setError(t.auth.networkError);
       setLoading(false);
+      return;
     }
+    const data = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      error?: string;
+      nextPath?: string;
+    };
+    if (!res.ok || !data.ok) {
+      // Don't silently navigate on failure — the user should know the
+      // confirmation didn't stick so they can retry instead of getting
+      // stuck in a loop on next login.
+      setError(data.error ?? 'confirm_failed');
+      setLoading(false);
+      return;
+    }
+    router.push(data.nextPath ?? '/questionnaire');
+    router.refresh();
   };
 
   const onReject = async () => {
@@ -95,6 +112,12 @@ export function ConfirmIdentityClient({ handle, avatarUrl, skoolUrl, displayName
               <p className="text-xs text-ink-muted mt-1">{email}</p>
             )}
           </div>
+
+          {error && (
+            <div className="mt-2 w-full text-xs text-danger font-mono bg-danger/5 border border-danger/30 rounded-md p-2">
+              {error}
+            </div>
+          )}
 
           <div className="w-full flex flex-col gap-2 mt-2">
             <Button onClick={onConfirm} size="lg" loading={loading} className="w-full">

@@ -287,7 +287,7 @@ function FieldText({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
+        className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 transition-colors"
       />
       {hint && <p className="text-[11px] text-ink-dim mt-1">{hint}</p>}
     </div>

@@ -231,7 +231,7 @@ export function WelcomeSearch({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t.welcome.searchPlaceholder}
-                className="w-full h-14 pl-12 pr-12 bg-transparent border-b border-line text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
+                className="w-full h-14 pl-12 pr-12 bg-transparent border-b border-line text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 transition-colors"
                 autoFocus
                 autoComplete="off"
                 spellCheck={false}

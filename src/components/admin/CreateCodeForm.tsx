@@ -61,7 +61,7 @@ export function CreateCodeForm() {
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             placeholder={t.admin.codes.codeLabel}
-            className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink font-mono uppercase tracking-widest placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
+            className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink font-mono uppercase tracking-widest placeholder:text-ink-dim focus:outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 transition-colors"
             maxLength={20}
             required
           />
@@ -77,7 +77,7 @@ export function CreateCodeForm() {
             value={points}
             onChange={(e) => setPoints(e.target.value)}
             placeholder={t.admin.codes.pointsLabel}
-            className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
+            className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 transition-colors"
             required
           />
         </div>
@@ -90,7 +90,7 @@ export function CreateCodeForm() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder={t.admin.codes.descriptionLabel}
-          className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
+          className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 transition-colors"
         />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -105,7 +105,7 @@ export function CreateCodeForm() {
             value={maxUses}
             onChange={(e) => setMaxUses(e.target.value)}
             placeholder={t.admin.codes.maxUsesLabel}
-            className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
+            className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 transition-colors"
           />
         </div>
         <div>
@@ -116,7 +116,7 @@ export function CreateCodeForm() {
             value={expiresAt}
             onChange={(e) => setExpiresAt(e.target.value)}
             placeholder={t.admin.codes.expiresLabel}
-            className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
+            className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 transition-colors"
           />
         </div>
       </div>

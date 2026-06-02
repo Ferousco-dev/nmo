@@ -16,6 +16,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ImagePlus, Loader2, Trash2, Upload } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { useT } from '@/lib/i18n/client';
 
 const MAX_BYTES = 1_048_576; // 1 MB
 const ACCEPT = 'image/png,image/jpeg,image/jpg,image/svg+xml,image/webp';
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export function TierBadgeImageEditor({ badgeId, badgeKey, currentImageUrl }: Props) {
+  const t = useT();
   const router = useRouter();
   const supabase = createClient();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -43,7 +45,7 @@ export function TierBadgeImageEditor({ badgeId, badgeKey, currentImageUrl }: Pro
   const onPickFile = (file: File | null) => {
     if (!file) return;
     if (file.size > MAX_BYTES) {
-      setState({ kind: 'err', message: 'File too large (max 1 MB).' });
+      setState({ kind: 'err', message: t.admin.badges.tierErrorTooLarge });
       return;
     }
     void upload(file);
@@ -161,20 +163,20 @@ export function TierBadgeImageEditor({ badgeId, badgeKey, currentImageUrl }: Pro
           )}
           {submitting
             ? state.kind === 'uploading' && state.step === 'sign'
-              ? 'Signing…'
+              ? t.admin.badges.tierSigning
               : state.kind === 'uploading' && state.step === 'cloudinary'
-                ? 'Uploading…'
-                : 'Saving…'
+                ? t.admin.badges.tierUploading
+                : t.admin.badges.tierSaving
             : currentImageUrl
-              ? 'Replace'
-              : 'Upload'}
+              ? t.admin.badges.tierReplace
+              : t.admin.badges.tierUpload}
         </button>
         {currentImageUrl && !submitting && (
           <button
             type="button"
             onClick={onRemove}
             className="inline-flex items-center gap-1 h-8 px-2 rounded-md border border-line bg-bg-raised text-xs text-danger hover:bg-danger/10"
-            title="Remove custom image"
+            title={t.admin.badges.tierRemove}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>

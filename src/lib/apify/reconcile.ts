@@ -77,6 +77,7 @@ interface PageFunctionError {
 interface BotRunsRow {
   id: string;
   notes: Record<string, unknown> | null;
+  started_at: string;
 }
 
 export async function reconcilePendingApifyRuns(
@@ -90,10 +91,33 @@ export async function reconcilePendingApifyRuns(
   // grab recent running rows and filter in JS.
   const { data: rows } = await supabase
     .from('bot_runs')
-    .select('id, notes')
+    .select('id, notes, started_at')
     .eq('status', 'running')
     .order('started_at', { ascending: false })
     .limit(20);
+
+  // Mark runs that have been "running" for more than STALL_AFTER_MS as
+  // failed. Without this guard, a row that never gets a terminal Apify
+  // status (Vercel terminated the function mid-poll, network glitch
+  // during status read, etc.) stays running forever and blocks the
+  // 10-min cooldown on /api/me/refresh-engagement for that handle —
+  // user can never trigger another refresh.
+  const STALL_AFTER_MS = 5 * 60_000;
+  const now = Date.now();
+  const stalled = (rows ?? []).filter((r) => {
+    const startedAt = new Date((r as { started_at: string }).started_at).getTime();
+    return Number.isFinite(startedAt) && now - startedAt > STALL_AFTER_MS;
+  });
+  for (const r of stalled) {
+    await supabase
+      .from('bot_runs')
+      .update({
+        status: 'failed',
+        finished_at: new Date().toISOString(),
+        error: `Stalled — running > ${STALL_AFTER_MS / 60_000} min without terminal Apify status`,
+      })
+      .eq('id', (r as { id: string }).id);
+  }
 
   const candidates = (rows ?? [])
     .filter((r): r is BotRunsRow => {

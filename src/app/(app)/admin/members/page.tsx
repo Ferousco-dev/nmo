@@ -71,7 +71,7 @@ export default async function AdminMembersPage({
               name="q"
               defaultValue={q}
               placeholder={t.admin.members.search}
-              className="w-full h-12 pl-12 pr-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
+              className="w-full h-12 pl-12 pr-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 transition-colors"
               autoComplete="off"
             />
           </div>

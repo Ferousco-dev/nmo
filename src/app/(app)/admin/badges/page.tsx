@@ -110,10 +110,7 @@ export default async function AdminBadgesPage() {
         <h2 className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-muted mb-4">
           {t.admin.badges.tiersHeading} · {tier.length}
         </h2>
-        <p className="text-xs text-ink-muted mb-4">
-          Upload your own artwork for each tier. PNG / JPG / SVG / WebP, up to 1 MB.
-          Remove to restore the default icon.
-        </p>
+        <p className="text-xs text-ink-muted mb-4">{t.admin.badges.tiersEditableHint}</p>
         <ul className="divide-y divide-line-subtle">
           {tier.map((b) => {
             const name = isZh ? b.name_zh : b.name_en;

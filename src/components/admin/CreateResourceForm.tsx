@@ -66,7 +66,7 @@ export function CreateResourceForm() {
   };
 
   const inputCls =
-    'w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors';
+    'w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 transition-colors';
 
   return (
     <form onSubmit={submit} className="space-y-3">
@@ -106,7 +106,7 @@ export function CreateResourceForm() {
             onChange={(e) => setDescEn(e.target.value)}
             placeholder={t.admin.resources.descriptionEnLabel}
             rows={3}
-            className="w-full px-4 py-3 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors resize-none"
+            className="w-full px-4 py-3 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 transition-colors resize-none"
             maxLength={500}
           />
         </div>
@@ -118,7 +118,7 @@ export function CreateResourceForm() {
             onChange={(e) => setDescZh(e.target.value)}
             placeholder={t.admin.resources.descriptionZhLabel}
             rows={3}
-            className="w-full px-4 py-3 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors resize-none"
+            className="w-full px-4 py-3 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 transition-colors resize-none"
             maxLength={500}
           />
         </div>

@@ -46,34 +46,40 @@ export async function POST() {
     );
   }
 
-  // Cooldown: bail if there's a recent successful or pending run for
-  // this user's handle. Cheaper than rate-limiting on Apify side.
-  const cutoff = new Date(Date.now() - COOLDOWN_MINUTES * 60 * 1000).toISOString();
-  const { data: recent } = await supabase
-    .from('bot_runs')
-    .select('id, status, started_at, notes')
-    .gte('started_at', cutoff)
-    .order('started_at', { ascending: false })
-    .limit(10);
-
-  const cooled = (recent ?? []).find((r) => {
-    const n = (r.notes ?? {}) as Record<string, unknown>;
-    if (n.mode !== 'engagement_events_apify') return false;
-    const list = n.explicit_handles;
-    return Array.isArray(list) && list.includes(handle);
-  });
-  if (cooled) {
+  // Atomic cooldown check + slot reservation. The RPC locks bot_runs,
+  // checks for a recent run, and inserts a 'running' placeholder in a
+  // single transaction. This closes the TOCTOU race where two parallel
+  // requests (login + dashboard mount, observed ~40ms apart in tests)
+  // both passed the cooldown check and both queued Apify runs.
+  const { data: reservation, error: reserveErr } = await supabase.rpc(
+    'reserve_engagement_run',
+    { p_handle: handle, p_cooldown_minutes: COOLDOWN_MINUTES },
+  );
+  if (reserveErr || !reservation || !Array.isArray(reservation) || reservation.length === 0) {
+    return NextResponse.json(
+      { error: 'reserve_failed', detail: reserveErr?.message ?? null },
+      { status: 500 },
+    );
+  }
+  const reserved = reservation[0] as {
+    bot_run_id: string | null;
+    cooldown_active: boolean;
+    recent_run_id: string | null;
+    recent_status: string | null;
+  };
+  if (reserved.cooldown_active) {
     return NextResponse.json(
       {
         ok: false,
         error: 'cooldown',
-        recent_run_id: (cooled as { id: string }).id,
-        recent_run_status: (cooled as { status: string }).status,
+        recent_run_id: reserved.recent_run_id,
+        recent_run_status: reserved.recent_status,
         hint: `Activity refreshes are throttled to once every ${COOLDOWN_MINUTES} minutes.`,
       },
       { status: 429 },
     );
   }
+  const reservedRunId = reserved.bot_run_id as string;
 
   // Pull integration credentials. These live in app_settings (set in
   // /admin → Integrations) — same source the admin trigger uses.
@@ -116,6 +122,26 @@ export async function POST() {
     customData: { skoolEmail, skoolPassword, handles: [handle], communitySlug: COMMUNITY_SLUG },
   };
 
+  // Helper: mark our reserved slot failed so the cooldown clears and
+  // the user can retry without waiting for the reconciler's stall
+  // sweep (5 min).
+  const markReservedRunFailed = async (errorMessage: string) => {
+    const url2 = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key2 = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url2 || !key2 || !reservedRunId) return;
+    const svc = createServiceClient(url2, key2, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    await svc
+      .from('bot_runs')
+      .update({
+        status: 'failed',
+        finished_at: new Date().toISOString(),
+        error: errorMessage.slice(0, 500),
+      })
+      .eq('id', reservedRunId);
+  };
+
   // Run-level cost caps: 2 GB RAM (half default) + 4-min wall-clock.
   let runMeta;
   try {
@@ -125,6 +151,7 @@ export async function POST() {
     });
   } catch (e: unknown) {
     if (e instanceof ApifyError) {
+      await markReservedRunFailed(`apify_run_failed: ${e.bodyText.slice(0, 200)}`);
       return NextResponse.json(
         {
           error: 'apify_run_failed',
@@ -136,23 +163,22 @@ export async function POST() {
       );
     }
     const msg = e instanceof Error ? e.message : 'unknown';
+    await markReservedRunFailed(`apify_unreachable: ${msg}`);
     return NextResponse.json({ error: 'apify_unreachable', detail: msg }, { status: 502 });
   }
 
-  // bot_runs has SELECT-only RLS — needs service-role to insert.
-  // Without this row, the reconciler can't link the Apify dataset
-  // back to ingest into engagement_events.
+  // Attach the apify_run_id to the bot_runs slot we already reserved
+  // atomically via reserve_engagement_run(). The notes column needs
+  // service-role to update (RLS is SELECT-only).
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  let runRow: { id: string } | null = null;
-  if (supabaseUrl && serviceKey) {
+  if (supabaseUrl && serviceKey && reservedRunId) {
     const service = createServiceClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data, error: runErr } = await service
+    const { error: updateErr } = await service
       .from('bot_runs')
-      .insert({
-        status: 'running',
+      .update({
         notes: {
           mode: 'engagement_events_apify',
           batch_size: 1,
@@ -162,19 +188,16 @@ export async function POST() {
           apify_run_id: runMeta.id,
         },
       })
-      .select('id')
-      .single();
-    if (runErr) {
-      console.error('[refresh-engagement] bot_runs insert failed', runErr.message);
-    } else {
-      runRow = data as { id: string };
+      .eq('id', reservedRunId);
+    if (updateErr) {
+      console.error('[refresh-engagement] bot_runs update failed', updateErr.message);
     }
   }
 
   return NextResponse.json({
     ok: true,
     queued: true,
-    run_id: runRow?.id ?? null,
+    run_id: reservedRunId,
     apify_run_id: runMeta.id,
     apify_status: runMeta.status,
     handle,

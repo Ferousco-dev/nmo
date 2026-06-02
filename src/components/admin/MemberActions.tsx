@@ -83,7 +83,7 @@ export function GrantPointsForm({ targetUserId }: { targetUserId: string }) {
           value={points}
           onChange={(e) => setPoints(e.target.value)}
           placeholder={t.admin.member.pointsLabel}
-          className="flex-1 h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
+          className="flex-1 h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 transition-colors"
           required
         />
       </div>
@@ -97,7 +97,7 @@ export function GrantPointsForm({ targetUserId }: { targetUserId: string }) {
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder={t.admin.member.reasonLabel}
-          className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent transition-colors"
+          className="w-full h-11 px-4 rounded-lg bg-bg-raised border border-line-strong text-ink placeholder:text-ink-dim focus:outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 transition-colors"
         />
       </div>
       <div className="flex items-center justify-between gap-3">
@@ -171,7 +171,7 @@ export function GrantBadgeForm({
         id={`grant-badge-${targetUserId}`}
         value={badgeKey}
         onChange={(e) => setBadgeKey(e.target.value)}
-        className="flex-1 min-w-0 h-11 px-3 rounded-lg bg-bg-raised border border-line-strong text-ink focus:outline-none focus:border-accent transition-colors"
+        className="flex-1 min-w-0 h-11 px-3 rounded-lg bg-bg-raised border border-line-strong text-ink focus:outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 transition-colors"
         required
       >
         <option value="">— {t.admin.member.grantBadge} —</option>
@@ -238,7 +238,7 @@ export function RevokeBadgeButton({
       style={{ borderColor: `${color}40` }}
     >
       <div
-        className="h-7 w-7 rounded-md flex items-center justify-center shrink-0"
+        className="h-10 w-10 rounded-md flex items-center justify-center shrink-0"
         style={{ backgroundColor: `${color}1a`, color }}
       >
         <Icon className="h-4 w-4" strokeWidth={2.4} />
@@ -251,7 +251,7 @@ export function RevokeBadgeButton({
         onClick={revoke}
         disabled={busy}
         aria-label={t.admin.member.revoke}
-        className="h-7 w-7 rounded-md text-ink-dim hover:text-danger hover:bg-danger/10 flex items-center justify-center transition-colors disabled:opacity-50"
+        className="h-10 w-10 rounded-md text-ink-dim hover:text-danger hover:bg-danger/10 flex items-center justify-center transition-colors disabled:opacity-50"
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>
