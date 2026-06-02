@@ -3,11 +3,12 @@
 // Custom (non-tier) badges show a soft-delete button.
 
 import Link from 'next/link';
-import { ChevronLeft, Plus, Award } from 'lucide-react';
+import { ChevronLeft, Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getT, getLocale } from '@/lib/i18n/server';
 import { badgeIcon } from '@/lib/badges';
 import { BadgeRowActions } from '@/components/admin/BadgeRowActions';
+import { TierBadgeImageEditor } from '@/components/admin/TierBadgeImageEditor';
 import type { Badge } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -104,29 +105,48 @@ export default async function AdminBadgesPage() {
         )}
       </section>
 
-      {/* Tiers — read-only, seeded */}
+      {/* Tiers — image editable by super-admin (RPC enforces) */}
       <section className="card-premium p-6">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-muted mb-4">
           {t.admin.badges.tiersHeading} · {tier.length}
         </h2>
-        <p className="text-xs text-ink-muted mb-4">{t.admin.badges.tiersReadOnly}</p>
+        <p className="text-xs text-ink-muted mb-4">
+          Upload your own artwork for each tier. PNG / JPG / SVG / WebP, up to 1 MB.
+          Remove to restore the default icon.
+        </p>
         <ul className="divide-y divide-line-subtle">
           {tier.map((b) => {
             const name = isZh ? b.name_zh : b.name_en;
             const Icon = badgeIcon(b.icon);
+            const color = b.color ?? '#71717a';
             return (
               <li key={b.id} className="flex items-center gap-3 py-3">
-                <div className="h-9 w-9 rounded-lg flex items-center justify-center border shrink-0 bg-bg-raised border-line">
-                  <Award className="h-4 w-4 text-ink-dim" />
+                <div
+                  className="h-10 w-10 rounded-lg flex items-center justify-center border shrink-0"
+                  style={{
+                    backgroundColor: `${color}1a`,
+                    borderColor: `${color}55`,
+                  }}
+                >
+                  {b.image_url ? (
+                    <img src={b.image_url} alt="" className="h-8 w-8 object-contain rounded" />
+                  ) : (
+                    <Icon className="h-5 w-5" style={{ color }} />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className="font-medium text-ink">
+                  <div className="font-medium text-ink truncate">
                     Lv{b.tier} · {name}
-                  </span>
+                  </div>
+                  <div className="font-mono text-xs text-ink-dim">
+                    {(b.points_threshold ?? 0).toLocaleString()} pts
+                  </div>
                 </div>
-                <span className="font-mono text-xs text-ink-dim shrink-0">
-                  {(b.points_threshold ?? 0).toLocaleString()} pts
-                </span>
+                <TierBadgeImageEditor
+                  badgeId={b.id}
+                  badgeKey={b.key}
+                  currentImageUrl={b.image_url ?? null}
+                />
               </li>
             );
           })}
