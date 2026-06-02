@@ -42,7 +42,10 @@ begin
    where id = p_badge_id;
 
   -- Audit row in admin_actions so the change shows up in the bot log.
-  insert into public.admin_actions (admin_user_id, action, payload)
+  -- Column names match admin.sql: (admin_id, action_type, payload).
+  -- 'update_badge_image' must be in the admin_actions_action_type_check
+  -- constraint, which is extended in 2026_05_23_secure_skool_session_and_audit.sql.
+  insert into public.admin_actions (admin_id, action_type, payload)
   values (
     v_admin,
     'update_badge_image',

@@ -107,7 +107,7 @@ export default async function ConfirmPage({
             </div>
 
             <Link
-              href={`/signup?handle=${encodeURIComponent(member.handle)}`}
+              href={`/login?handle=${encodeURIComponent(member.handle)}`}
               className="inline-flex items-center justify-center gap-2 w-full h-13 px-7 rounded-lg bg-accent text-white font-medium text-base hover:bg-accent-hover shadow-lg shadow-accent/20 hover:shadow-accent/40 hover:-translate-y-0.5 transition-all"
             >
               {t.welcome.confirmCta}

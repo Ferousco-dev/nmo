@@ -16,13 +16,20 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: 'not_authenticated' }, { status: 401 });
   }
+  // Badge artwork upload is a super-admin action (the downstream
+  // admin_update_badge_image and admin_create_badge RPCs both reject
+  // for non-super-admins). Gate at the route too so regular admins
+  // don't waste a signed Cloudinary slot they can't use.
   const { data: admin } = await supabase
     .from('admin_users')
-    .select('user_id')
+    .select('user_id, is_super_admin')
     .eq('user_id', user.id)
     .maybeSingle();
   if (!admin) {
     return NextResponse.json({ error: 'not_admin' }, { status: 403 });
+  }
+  if (!(admin as { is_super_admin: boolean }).is_super_admin) {
+    return NextResponse.json({ error: 'not_super_admin' }, { status: 403 });
   }
 
   let hint = 'badge';

@@ -253,8 +253,6 @@ export async function POST(req: Request) {
         skool_handle: member.handle,
         skool_url: member.handle ? `https://www.skool.com/@${member.handle}` : null,
         skool_avatar_url: member.avatarUrl,
-        skool_auth_token: authToken,
-        skool_auth_token_expires_at: expiresAt,
         // We just confirmed NMO membership via api2/users/{id}/groups —
         // mark verified so the profile chip doesn't show "Unverified".
         skool_membership_status: 'verified',
@@ -272,12 +270,24 @@ export async function POST(req: Request) {
         skool_handle: member.handle,
         skool_url: member.handle ? `https://www.skool.com/@${member.handle}` : null,
         skool_avatar_url: member.avatarUrl,
-        skool_auth_token: authToken,
-        skool_auth_token_expires_at: expiresAt,
         skool_membership_status: 'verified',
       })
       .eq('id', userId);
   }
+
+  // Persist the Skool session token to the private user_skool_sessions
+  // table (service-role only — never readable via the API). Previously
+  // these columns lived on profiles, which had a broad "viewable by all
+  // authenticated" SELECT policy and leaked every user's JWT.
+  await service.from('user_skool_sessions').upsert(
+    {
+      user_id: userId,
+      auth_token: authToken,
+      expires_at: expiresAt,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id' },
+  );
 
   // 7. Mint a Supabase session for this user.
   // generateLink('magiclink') gives us a hashed_token we exchange via
