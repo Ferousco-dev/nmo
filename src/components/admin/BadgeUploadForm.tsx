@@ -158,12 +158,12 @@ export function BadgeUploadForm() {
             {t.admin.badges.imageHint}
           </span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className={cn(
-              'h-24 w-24 rounded-2xl border-2 border-dashed flex items-center justify-center transition-colors shrink-0',
+              'h-20 w-20 sm:h-24 sm:w-24 rounded-2xl border-2 border-dashed flex items-center justify-center transition-colors shrink-0',
               previewUrl ? 'border-line bg-bg-raised' : 'border-line hover:border-accent/50 hover:bg-bg-hover',
             )}
           >
@@ -171,7 +171,7 @@ export function BadgeUploadForm() {
               <img
                 src={previewUrl}
                 alt="preview"
-                className="h-20 w-20 object-contain rounded-xl"
+                className="h-16 w-16 sm:h-20 sm:w-20 object-contain rounded-xl"
               />
             ) : (
               <ImagePlus className="h-8 w-8 text-ink-dim" />

@@ -126,13 +126,13 @@ export default async function DashboardPage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-baseline gap-2 group max-w-full"
               >
-                <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mt-1 group-hover:text-accent transition-colors truncate">
+                <h1 className="font-display text-2xl sm:text-4xl md:text-5xl font-bold tracking-tight mt-1 group-hover:text-accent transition-colors truncate">
                   {displayName} <span className="text-accent">.</span>
                 </h1>
                 <ExternalLink className="h-4 w-4 text-ink-dim group-hover:text-accent transition-colors shrink-0" aria-hidden />
               </a>
             ) : (
-              <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mt-1 truncate">
+              <h1 className="font-display text-2xl sm:text-4xl md:text-5xl font-bold tracking-tight mt-1 truncate">
                 {displayName} <span className="text-accent">.</span>
               </h1>
             )}

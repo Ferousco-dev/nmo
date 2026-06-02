@@ -244,7 +244,7 @@ export function FamilyTreeManager({ initialMembers }: { initialMembers: FamilyTr
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
             <label className="block text-xs font-mono uppercase tracking-wider text-ink-muted mb-1">
               {f.roleLabel} *

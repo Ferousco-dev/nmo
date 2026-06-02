@@ -67,7 +67,7 @@ export default async function ConfirmPage({
 
       {/* Background glow */}
       <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-accent/10 blur-[140px]" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[320px] h-[320px] sm:w-[700px] sm:h-[700px] rounded-full bg-accent/10 blur-[140px]" />
       </div>
 
       <main className="flex-1 flex items-center justify-center px-4 py-24">

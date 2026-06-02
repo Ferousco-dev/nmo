@@ -314,7 +314,7 @@ function RoadmapBoard({
         <h2 className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-dim mb-4">
           {t.leaderboard.podiumTitle}
         </h2>
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 items-end">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-4 items-end">
           {podiumOrder.map((entry) => {
             const rank = entries.findIndex((e) => e.id === entry.id) + 1;
             const isMe = entry.id === currentUserId;

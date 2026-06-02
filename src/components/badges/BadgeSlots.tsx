@@ -31,7 +31,7 @@ export function BadgeSlots({
   while (slots.length < SPECIAL_SLOTS) slots.push(null);
 
   return (
-    <div className="grid grid-cols-5 gap-2 sm:gap-3">
+    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3">
       <SlotCell badge={primary} label={primaryLabel} locale={locale} primary />
       {slots.map((b, i) => (
         <SlotCell

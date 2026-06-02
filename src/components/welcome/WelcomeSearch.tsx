@@ -200,7 +200,7 @@ export function WelcomeSearch({
 
       {/* Decorative background glows */}
       <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-accent/10 blur-[140px]" />
+        <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[320px] h-[320px] sm:w-[700px] sm:h-[700px] rounded-full bg-accent/10 blur-[140px]" />
         <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] rounded-full bg-accent/5 blur-[120px]" />
       </div>
 

@@ -152,7 +152,7 @@ export function IntegrationSettingsCard() {
                 </span>
               </div>
               <p className="text-xs text-ink-muted mb-2 leading-snug">{field.help}</p>
-              <div className="flex items-stretch gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch gap-2">
                 <div className="relative flex-1 min-w-0">
                   <input
                     id={`set-${field.key}`}
@@ -192,7 +192,7 @@ export function IntegrationSettingsCard() {
                   onClick={() => save(field.key)}
                   disabled={savingKey === field.key || !draft.trim()}
                   className={cn(
-                    'inline-flex items-center justify-center px-4 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
+                    'inline-flex items-center justify-center h-10 px-4 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
                     savingKey === field.key || !draft.trim()
                       ? 'bg-bg-raised text-ink-dim cursor-not-allowed'

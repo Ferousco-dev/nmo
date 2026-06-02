@@ -136,8 +136,8 @@ export function TierBadgeImageEditor({ badgeId, badgeKey, currentImageUrl }: Pro
   };
 
   return (
-    <div className="flex flex-col items-end gap-1 shrink-0">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col items-end gap-1 shrink-0 max-w-[140px] sm:max-w-none">
+      <div className="flex items-center gap-1 sm:gap-2">
         <input
           ref={inputRef}
           type="file"

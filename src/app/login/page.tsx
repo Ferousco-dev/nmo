@@ -123,7 +123,7 @@ export default function LoginPage() {
         <ThemeToggle />
       </div>
       <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-accent/10 blur-[120px]" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[300px] h-[300px] sm:w-[600px] sm:h-[600px] rounded-full bg-accent/10 blur-[120px]" />
       </div>
 
       <div className="w-full max-w-md animate-slide-up">
@@ -131,7 +131,7 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl overflow-hidden border border-accent/30 mb-4 glow-blue">
             <Logo size={64} priority />
           </div>
-          <h1 className="font-display text-4xl font-bold tracking-tight">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">
             <span className="gradient-text">{t.auth.loginTitle}</span>
           </h1>
           <p className="mt-2 text-ink-muted">{t.auth.loginSubtitle}</p>

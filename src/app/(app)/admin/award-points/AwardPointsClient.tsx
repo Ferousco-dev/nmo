@@ -151,13 +151,13 @@ export function AwardPointsClient() {
 
       {picked && (
         <div className="card-premium p-5 space-y-4 border-accent/30">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {picked.skool_avatar_url ? (
               <img src={picked.skool_avatar_url} alt="" className="h-12 w-12 rounded-full object-cover" />
             ) : (
               <div className="h-12 w-12 rounded-full bg-bg-raised border border-line" />
             )}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[150px]">
               <div className="font-semibold text-ink truncate">
                 {picked.display_name || picked.skool_handle || picked.email}
               </div>
@@ -165,13 +165,13 @@ export function AwardPointsClient() {
                 {picked.skool_handle ? `@${picked.skool_handle}` : ''} · {picked.email}
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-right shrink-0">
               <div className="text-xs text-ink-dim">Current</div>
               <div className="text-lg font-mono font-bold text-ink">{picked.total_points ?? 0}</div>
             </div>
             <button
               onClick={() => setPicked(null)}
-              className="text-xs text-ink-dim hover:text-ink"
+              className="text-xs text-ink-dim hover:text-ink shrink-0"
             >
               change
             </button>
