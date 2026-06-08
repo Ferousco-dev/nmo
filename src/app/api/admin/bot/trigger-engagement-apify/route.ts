@@ -118,7 +118,7 @@ export async function POST(req: Request) {
     maxConcurrency: 1,
     // 200 profiles × ~3.5s + login + buffer = 15 min wall-clock budget.
     pageFunctionTimeoutSecs: 900,
-    pageLoadTimeoutSecs: 45,
+    pageLoadTimeoutSecs: 120,
     maxRequestRetries: 0,
     customData: { skoolEmail, skoolPassword, handles, communitySlug: COMMUNITY_SLUG },
   };

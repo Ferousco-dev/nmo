@@ -110,7 +110,7 @@ export async function GET(req: Request) {
     maxRequestsPerCrawl: 1,
     maxConcurrency: 1,
     pageFunctionTimeoutSecs: 900,
-    pageLoadTimeoutSecs: 45,
+    pageLoadTimeoutSecs: 120,
     maxRequestRetries: 0,
     customData: { skoolEmail, skoolPassword, handles, communitySlug: COMMUNITY_SLUG },
   };

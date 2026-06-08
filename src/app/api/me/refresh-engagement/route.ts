@@ -125,7 +125,7 @@ export async function POST() {
     maxConcurrency: 1,
     // Single profile: login (~20s) + scrape (~30s) + buffer.
     pageFunctionTimeoutSecs: 180,
-    pageLoadTimeoutSecs: 45,
+    pageLoadTimeoutSecs: 120,
     maxRequestRetries: 0,
     customData: { skoolEmail, skoolPassword, handles: [handle], communitySlug: COMMUNITY_SLUG },
   };
@@ -155,7 +155,7 @@ export async function POST() {
   try {
     runMeta = await apifyStartRun(APIFY_ACTOR, actorInput, apifyToken!, {
       memoryMbytes: 2048,
-      timeoutSecs: 240,
+      timeoutSecs: 360,
     });
   } catch (e: unknown) {
     if (e instanceof ApifyError) {
