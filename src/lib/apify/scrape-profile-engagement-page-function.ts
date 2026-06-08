@@ -93,7 +93,13 @@ async function pageFunction(context) {
       continue;
     }
 
-    const profileUrl = 'https://www.skool.com/@' + handle;
+    // CRITICAL: Skool now hides Contributions until you pick a community
+    // via the "Select a group" dropdown. Profile pages WITHOUT ?g=<slug>
+    // render an empty contributions section, which is why the scraper
+    // returned 0 events for any account. The communitySlug comes from
+    // customData; for NMO it's 'nmo'.
+    const profileUrl =
+      'https://www.skool.com/@' + handle + '?g=' + encodeURIComponent(communitySlug);
     try {
       await page.goto(profileUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
     } catch (e) {
@@ -134,18 +140,24 @@ async function pageFunction(context) {
       // proceed anyway — __NEXT_DATA__ may still have content
     }
 
-    // Surface lazy-loaded contributions. 3 scrolls is enough for the
-    // recent-activity tab; more was burning CU on diminishing returns.
-    try {
-      let last = 0;
-      for (let i = 0; i < 3; i++) {
-        const cur = await page.evaluate(() => document.body.scrollHeight);
-        if (cur === last) break;
-        last = cur;
-        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-        await page.waitForTimeout(600);
-      }
-    } catch (e) { /* ignore */ }
+    // Paginate through "Next" until disabled. Skool replaced the
+    // infinite-scroll feed with classic pagination on contributions —
+    // page 1 only has 30 events, even for users with hundreds. Cap at
+    // 10 pages (~300 events) so we never burn CU on a runaway loop.
+    const MAX_PAGES = 10;
+    let lastPageHash = '';
+    for (let pageNum = 1; pageNum <= MAX_PAGES; pageNum++) {
+      // Surface lazy-loaded contributions on the current page.
+      try {
+        let last = 0;
+        for (let i = 0; i < 3; i++) {
+          const cur = await page.evaluate(() => document.body.scrollHeight);
+          if (cur === last) break;
+          last = cur;
+          await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+          await page.waitForTimeout(600);
+        }
+      } catch (e) { /* ignore */ }
 
     // Strategy A: walk __NEXT_DATA__ for post/comment-shaped nodes
     // authored by this user. Stable ids inside __NEXT_DATA__ make the
@@ -272,6 +284,58 @@ async function pageFunction(context) {
     }, { communitySlug });
 
     for (const ev of domEvents) pushEvent(handle, ev);
+
+      // Click "Next" if available + enabled. Skool's pagination control
+      // is at the bottom of the contributions list; the button shows
+      // as disabled/grey when there's no further page.
+      const clicked = await page.evaluate(() => {
+        // Find any element whose visible text is exactly "Next"
+        // (case-insensitive, allow trailing arrow glyphs).
+        const all = Array.from(document.querySelectorAll('button, a, span'));
+        for (const el of all) {
+          const txt = (el.textContent || '').trim().toLowerCase();
+          if (txt !== 'next' && txt !== 'next >' && txt !== 'next›') continue;
+          // Walk up to the nearest clickable ancestor + check disabled
+          let target = el;
+          for (let depth = 0; depth < 4; depth++) {
+            const cls = (target.className || '').toString().toLowerCase();
+            const aria = target.getAttribute && target.getAttribute('aria-disabled');
+            const disabled = target.hasAttribute && (
+              target.hasAttribute('disabled') ||
+              aria === 'true' ||
+              cls.indexOf('disabled') >= 0
+            );
+            if (disabled) return false;
+            if (target.tagName === 'BUTTON' || target.tagName === 'A') {
+              target.click();
+              return true;
+            }
+            target = target.parentElement;
+            if (!target) break;
+          }
+        }
+        return false;
+      });
+      if (!clicked) {
+        log.info(handle + ': no more pages after ' + pageNum);
+        break;
+      }
+
+      // Wait for new contributions to render. Pagination usually
+      // re-renders the list within ~1s; an extra 500ms is buffer.
+      await page.waitForTimeout(1500);
+
+      // Bail if the page hash didn't change — defensive against an
+      // un-disabled Next that doesn't actually advance.
+      const newHash = await page.evaluate(() =>
+        (document.querySelector('main') || document.body).innerHTML.length.toString()
+      );
+      if (newHash === lastPageHash) {
+        log.info(handle + ': Next clicked but content unchanged at page ' + pageNum);
+        break;
+      }
+      lastPageHash = newHash;
+    } // end pagination loop
 
     log.info(handle + ': emitted ' + (perHandle[handle] || 0) + ' event(s)');
   }
