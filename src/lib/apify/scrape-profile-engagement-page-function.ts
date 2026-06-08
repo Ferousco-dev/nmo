@@ -71,6 +71,10 @@ async function pageFunction(context) {
   // Reusing this scrape for avatars kills the need for a separate
   // avatar-backfill run — same compute, two outputs.
   const avatars = {};
+  // Diagnostic dump per handle so we can see what the page actually
+  // looks like in production. Only the first 5 anchors per pattern
+  // to keep payload size sane.
+  const diagnostics = {};
 
   function pushEvent(handle, ev) {
     if (!ev || !ev.source_id || !ev.event_type) return;
@@ -134,15 +138,21 @@ async function pageFunction(context) {
       if (avatarUrl) avatars[handle] = avatarUrl;
     } catch (e) { /* swallow */ }
 
-    // Let Skool hydrate. Profile activity is rendered client-side.
+    // Let Skool hydrate. Profile activity loads via XHR after mount,
+    // not server-rendered, so we wait for contribution-card-shaped
+    // content. The previous wait used /post/ /comment/ paths which
+    // Skool doesn't use anymore — they use /<slug>?p=<id> or just
+    // anchors into /<slug>.
     try {
       await page.waitForSelector(
-        'a[href*="/post/"], a[href*="/comment/"], main, [class*="profile"]',
-        { timeout: 15000 }
+        'a[href*="?p="], a[href^="/' + communitySlug + '"], [class*="contribution" i], [class*="ribution"]',
+        { timeout: 30000 }
       );
     } catch (e) {
-      // proceed anyway — __NEXT_DATA__ may still have content
+      // proceed anyway — DOM walk below will surface what's there
     }
+    // Give the contributions area a bit more breathing room.
+    try { await page.waitForTimeout(1500); } catch (e) { /* ignore */ }
 
     // Paginate through "Next" until disabled. Skool replaced the
     // infinite-scroll feed with classic pagination on contributions —
@@ -162,6 +172,44 @@ async function pageFunction(context) {
           await page.waitForTimeout(600);
         }
       } catch (e) { /* ignore */ }
+
+    // Diagnostic: count anchor patterns + sample hrefs on this page.
+    // Only do this on page 1 to keep the payload small. Lets us see
+    // (a) whether contributions actually rendered, (b) what URL
+    // pattern Skool uses now, and (c) which selectors would match.
+    if (pageNum === 1 && !diagnostics[handle]) {
+      try {
+        const diag = await page.evaluate((slug) => {
+          const allLinks = Array.from(document.querySelectorAll('a'));
+          const hrefs = allLinks.map(function(a) { return a.getAttribute('href') || ''; });
+          const patterns = {
+            'p_query': hrefs.filter(function(h) { return h.indexOf('?p=') !== -1; }).length,
+            'slug_path': hrefs.filter(function(h) { return h.indexOf('/' + slug) === 0; }).length,
+            'post_word': hrefs.filter(function(h) { return h.indexOf('/post/') !== -1; }).length,
+            'comment_word': hrefs.filter(function(h) { return h.indexOf('/comment/') !== -1; }).length,
+          };
+          const sample = hrefs.filter(function(h) {
+            return h.indexOf('/' + slug) === 0 || h.indexOf('?p=') !== -1;
+          }).slice(0, 8);
+          return {
+            url: location.href,
+            title: document.title,
+            total_anchors: allLinks.length,
+            patterns: patterns,
+            sample_hrefs: sample,
+            has_next_data: !!document.getElementById('__NEXT_DATA__'),
+            body_text_len: (document.body.innerText || '').length,
+            contributions_count_text:
+              (document.body.innerText.match(/(\\d+)\\s+contribution/i) || [])[0] || null,
+          };
+        }, communitySlug);
+        diagnostics[handle] = diag;
+        log.info(handle + ': diag — ' + JSON.stringify(diag.patterns) +
+                 ' samples=' + JSON.stringify(diag.sample_hrefs.slice(0, 3)));
+      } catch (e) {
+        log.warning(handle + ': diagnostic dump failed — ' + e.message);
+      }
+    }
 
     // Strategy A: walk __NEXT_DATA__ for post/comment-shaped nodes
     // authored by this user. Stable ids inside __NEXT_DATA__ make the
@@ -350,6 +398,7 @@ async function pageFunction(context) {
     per_handle: perHandle,
     events,
     avatars, // { handle: avatarUrl }
+    diagnostics, // { handle: { url, title, total_anchors, patterns, sample_hrefs, ... } }
   };
 
   // ---- inline helpers (defined as JS expressions because pageFunction
