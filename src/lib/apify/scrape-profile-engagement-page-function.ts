@@ -343,9 +343,10 @@ async function pageFunction(context) {
 
         // Classify by text pattern:
         //   POST card: tail is likes-count, comments-count, "New comment"
-        //   COMMENT card: contains "N likes • Xtime" inline (the user's
-        //     own comment metadata)
-        const commentMatch = text.match(/(\\d+)\\s*likes?\\s*•\\s*\\d+\\s*[smhdw]/i);
+        //   COMMENT card: contains "N likes ... time" inline (the user's
+        //     own comment metadata). Bullet variants vary so use a
+        //     looser separator class.
+        const commentMatch = text.match(/(\\d+)\\s+likes?\\s+\\S\\s*\\d+\\s*[smhdw]/i);
         const isComment = !!commentMatch;
         let eventType = isComment ? 'comment' : 'post';
 
@@ -402,7 +403,13 @@ async function pageFunction(context) {
               foundCategory = true;
               continue;
             }
-            if (foundCategory && line.length >= 2 && !/^[0-9]+$/.test(line)) {
+            // Accept even 1-char titles (single CJK characters are common
+            // — skoolclaudeuse's "嗨" is one character). Just reject
+            // pure-numeric lines (which are likes/comments counters) and
+            // the "New comment X ago" footer.
+            if (foundCategory && line.length >= 1 &&
+                !/^[0-9]+$/.test(line) &&
+                line.indexOf('New comment') !== 0) {
               excerpt = line.slice(0, 280);
               break;
             }
