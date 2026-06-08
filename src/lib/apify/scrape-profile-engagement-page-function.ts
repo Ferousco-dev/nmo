@@ -296,11 +296,13 @@ async function pageFunction(context) {
         if (href.indexOf(slugPrefix + '-/') === 0) continue;
         if (href.indexOf(slugPrefix + 'classroom') === 0) continue;
 
-        // Extract a stable post id. Prefer the ?p= query param (8-char
-        // hex), fall back to the post slug after /<slug>/.
-        const pMatch = href.match(/[?&]p=([a-z0-9]{6,})/i);
+        // Extract a stable post id. Prefer the slug after /<community>/
+        // because every link to the post (with or without ?p=) shares
+        // the same slug. Using ?p= first would double-count (slug-only
+        // link vs ?p= link → different ids → both counted).
         const slugMatch = href.match(new RegExp('^/' + communitySlug + '/([^/?#]+)'));
-        const stableId = (pMatch && pMatch[1]) || (slugMatch && slugMatch[1]) || null;
+        const pMatch = href.match(/[?&]p=([a-z0-9]{6,})/i);
+        const stableId = (slugMatch && slugMatch[1]) || (pMatch && pMatch[1]) || null;
         if (!stableId || seenIds.has(stableId)) continue;
         seenIds.add(stableId);
 
