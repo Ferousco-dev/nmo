@@ -173,39 +173,66 @@ async function pageFunction(context) {
         }
       } catch (e) { /* ignore */ }
 
-    // Diagnostic: count anchor patterns + sample hrefs on this page.
-    // Only do this on page 1 to keep the payload small. Lets us see
-    // (a) whether contributions actually rendered, (b) what URL
-    // pattern Skool uses now, and (c) which selectors would match.
+    // Diagnostic v2: dump the actual card HTML so we can see how
+    // Skool distinguishes post/comment/reply cards and where the
+    // likes/comments counts live in the DOM. Only the first 3 cards
+    // per handle to keep payload small.
     if (pageNum === 1 && !diagnostics[handle]) {
       try {
         const diag = await page.evaluate((slug) => {
-          const allLinks = Array.from(document.querySelectorAll('a'));
-          const hrefs = allLinks.map(function(a) { return a.getAttribute('href') || ''; });
-          const patterns = {
-            'p_query': hrefs.filter(function(h) { return h.indexOf('?p=') !== -1; }).length,
-            'slug_path': hrefs.filter(function(h) { return h.indexOf('/' + slug) === 0; }).length,
-            'post_word': hrefs.filter(function(h) { return h.indexOf('/post/') !== -1; }).length,
-            'comment_word': hrefs.filter(function(h) { return h.indexOf('/comment/') !== -1; }).length,
-          };
-          const sample = hrefs.filter(function(h) {
-            return h.indexOf('/' + slug) === 0 || h.indexOf('?p=') !== -1;
-          }).slice(0, 8);
+          const slugPrefix = '/' + slug + '/';
+
+          // Find anchor cards (links into a post/comment) and walk up
+          // to the contribution wrapper.
+          const anchorCards = [];
+          const seenWrappers = new Set();
+          const links = Array.from(document.querySelectorAll('a[href]'));
+          for (const a of links) {
+            const href = a.getAttribute('href') || '';
+            if (!href.startsWith(slugPrefix)) continue;
+            if (href.indexOf(slugPrefix + 'about') === 0) continue;
+            if (href.indexOf(slugPrefix + '-/') === 0) continue;
+            if (href.indexOf(slugPrefix + 'classroom') === 0) continue;
+            const card = a.closest(
+              '[class*="contribution"], [class*="ribution"], [class*="card"], [class*="post"], article, li, [role="listitem"]'
+            ) || a.parentElement;
+            if (!card) continue;
+            if (seenWrappers.has(card)) continue;
+            seenWrappers.add(card);
+            // Capture details. Truncate HTML aggressively — we just
+            // need the structure, not the full content.
+            const verbHints = [];
+            const txt = (card.innerText || '').toLowerCase();
+            ['posted', 'commented', 'replied', 'reply', 'replying', 'in reply'].forEach(function(v) {
+              if (txt.indexOf(v) !== -1) verbHints.push(v);
+            });
+            anchorCards.push({
+              href: href,
+              card_class: (card.className || '').toString().slice(0, 200),
+              card_tag: card.tagName,
+              verb_hints: verbHints,
+              first_text_lines: (card.innerText || '').split('\\n').filter(function(s) { return s.trim(); }).slice(0, 6),
+              outer_html_snip: (card.outerHTML || '').replace(/\\s+/g, ' ').slice(0, 1500),
+            });
+            if (anchorCards.length >= 3) break;
+          }
+
+          // Also dump the entire body's first 2000 chars of innerText
+          // so I can see how Skool labels the user/verb/timestamp
+          // sequence.
+          const bodyText = (document.body.innerText || '').slice(0, 2000);
+
           return {
             url: location.href,
             title: document.title,
-            total_anchors: allLinks.length,
-            patterns: patterns,
-            sample_hrefs: sample,
-            has_next_data: !!document.getElementById('__NEXT_DATA__'),
-            body_text_len: (document.body.innerText || '').length,
+            body_text_head: bodyText,
+            anchor_cards: anchorCards,
             contributions_count_text:
               (document.body.innerText.match(/(\\d+)\\s+contribution/i) || [])[0] || null,
           };
         }, communitySlug);
         diagnostics[handle] = diag;
-        log.info(handle + ': diag — ' + JSON.stringify(diag.patterns) +
-                 ' samples=' + JSON.stringify(diag.sample_hrefs.slice(0, 3)));
+        log.info(handle + ': diag — ' + diag.anchor_cards.length + ' cards captured');
       } catch (e) {
         log.warning(handle + ': diagnostic dump failed — ' + e.message);
       }
