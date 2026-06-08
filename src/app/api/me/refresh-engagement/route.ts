@@ -148,13 +148,14 @@ export async function POST() {
   const batchHandles = handles.slice(0, BATCH_SIZE);
 
   const actorInput = {
-    // Start on a data: URL (loads instantly, no network) so the actor
-    // framework's mandatory navigation never blocks. All real navigation
-    // (login + profile pages) happens INSIDE pageFunction where we can
-    // control timeouts per-step. Previous design used /login as the
-    // startUrl — once Skool's WAF started taking >120s to clear, the
-    // framework gave up before pageFunction even ran.
-    startUrls: [{ url: 'data:text/html,<html><body>warmup</body></html>' }],
+    // Use example.com as a warmup URL — instant load, no auth, exists
+    // specifically for cases like this (IANA-managed). All real
+    // navigation (Skool login + profile pages) happens INSIDE
+    // pageFunction where we can control timeouts per-step. Previous
+    // design used /login as the startUrl — once Skool's WAF started
+    // taking >120s to clear, the framework gave up before pageFunction
+    // even ran. (data: URLs were rejected by Apify's input validator.)
+    startUrls: [{ url: 'https://example.com/' }],
     pseudoUrls: [],
     linkSelector: '',
     keepUrlFragments: false,
