@@ -32,12 +32,14 @@ export async function POST() {
     return NextResponse.json({ error: 'not_authenticated' }, { status: 401 });
   }
 
-  // Pull the caller's handle.
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('skool_handle')
-    .eq('id', user.id)
-    .single();
+  // Pull caller's handle + super-admin flag in one trip.
+  const [profileRes, adminRes] = await Promise.all([
+    supabase.from('profiles').select('skool_handle').eq('id', user.id).single(),
+    supabase.from('admin_users').select('is_super_admin').eq('user_id', user.id).maybeSingle(),
+  ]);
+  const profile = profileRes.data;
+  const isSuperAdmin =
+    (adminRes.data as { is_super_admin: boolean } | null)?.is_super_admin === true;
   const rawHandle = (profile?.skool_handle as string | undefined) ?? '';
   const handle = rawHandle.trim().replace(/^@+/, '').toLowerCase();
   if (!handle || !/^[a-z0-9._-]{2,40}$/.test(handle)) {
@@ -47,6 +49,11 @@ export async function POST() {
     );
   }
 
+  // Super-admin (Jack) bypasses the cooldown — useful for live demos
+  // and on-stage refreshes where the 10-min throttle would be visible.
+  // Pass p_cooldown_minutes: 0 so the RPC reserves a slot immediately.
+  const effectiveCooldown = isSuperAdmin ? 0 : COOLDOWN_MINUTES;
+
   // Atomic cooldown check + slot reservation. The RPC locks bot_runs,
   // checks for a recent run, and inserts a 'running' placeholder in a
   // single transaction. This closes the TOCTOU race where two parallel
@@ -54,7 +61,7 @@ export async function POST() {
   // both passed the cooldown check and both queued Apify runs.
   const { data: reservation, error: reserveErr } = await supabase.rpc(
     'reserve_engagement_run',
-    { p_handle: handle, p_cooldown_minutes: COOLDOWN_MINUTES },
+    { p_handle: handle, p_cooldown_minutes: effectiveCooldown },
   );
   if (reserveErr || !reservation || !Array.isArray(reservation) || reservation.length === 0) {
     return NextResponse.json(
