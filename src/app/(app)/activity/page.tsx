@@ -120,9 +120,17 @@ export default async function ActivityPage() {
           <p className="text-xs text-ink-dim mb-5">{t.activity.weights}</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <BreakdownTile type="post" count={gradeAll?.posts_count ?? 0} />
-            <BreakdownTile type="comment" count={gradeAll?.comments_count ?? 0} />
+            <BreakdownTile
+              type="comment"
+              count={
+                gradeAll?.comments_received_total ?? gradeAll?.comments_count ?? 0
+              }
+            />
             <BreakdownTile type="reply" count={gradeAll?.replies_count ?? 0} />
-            <BreakdownTile type="like" count={gradeAll?.likes_count ?? 0} />
+            <BreakdownTile
+              type="like"
+              count={gradeAll?.likes_received_total ?? gradeAll?.likes_count ?? 0}
+            />
           </div>
         </div>
 

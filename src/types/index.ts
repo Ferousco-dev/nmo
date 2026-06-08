@@ -66,6 +66,11 @@ export interface EngagementGrade {
   comments_count: number;
   replies_count: number;
   likes_count: number;
+  // Per-post audience metrics summed across the user's posts.
+  // Exposed by the engagement_grades view in engagement_received_stats.sql.
+  // Optional because older DBs may not have applied that migration yet.
+  likes_received_total?: number | null;
+  comments_received_total?: number | null;
   engagement_score: number;
   last_active_at: string | null;
 }
