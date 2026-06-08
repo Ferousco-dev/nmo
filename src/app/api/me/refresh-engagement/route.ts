@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { SCRAPE_PROFILE_ENGAGEMENT_PAGE_FUNCTION } from '@/lib/apify/scrape-profile-engagement-page-function';
 import { apifyStartRun, ApifyError } from '@/lib/apify/api';
+import { reconcilePendingApifyRuns } from '@/lib/apify/reconcile';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -192,6 +193,23 @@ export async function POST() {
     if (updateErr) {
       console.error('[refresh-engagement] bot_runs update failed', updateErr.message);
     }
+  }
+
+  // Sweep any earlier Apify runs that have finished but haven't been
+  // ingested yet. Without this, the dataset sits in Apify until someone
+  // visits /admin or the daily cron fires — which means after a user
+  // posts on Skool + triggers a refresh + waits, they still don't see
+  // it on the dashboard until they navigate to /admin.
+  //
+  // Fire-and-forget so this doesn't slow the response. Errors are
+  // swallowed inside the reconciler.
+  if (supabaseUrl && serviceKey) {
+    const svc = createServiceClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    void reconcilePendingApifyRuns(svc, apifyToken!).catch((e) => {
+      console.error('[refresh-engagement] reconciler sweep failed', e);
+    });
   }
 
   return NextResponse.json({
