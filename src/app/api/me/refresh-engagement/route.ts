@@ -160,7 +160,12 @@ export async function POST() {
     linkSelector: '',
     keepUrlFragments: false,
     pageFunction: SCRAPE_PROFILE_ENGAGEMENT_PAGE_FUNCTION,
-    proxyConfiguration: { useApifyProxy: true },
+    // Residential proxies — datacenter IPs are getting silently dropped
+    // by Skool's CDN (page.goto on /login times out at 180s without ever
+    // returning bytes). Residential IPs come from real consumer devices
+    // and aren't on Skool's blocklist. Costs more credits per request,
+    // but client said "don't care about Apify credits, just make it work".
+    proxyConfiguration: { useApifyProxy: true, apifyProxyGroups: ['RESIDENTIAL'] },
     maxRequestsPerCrawl: 1,
     maxConcurrency: 1,
     // Batch profile scrape: login (~120s worst-case WAF) + ~30s per
