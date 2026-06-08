@@ -11,6 +11,9 @@
 -- user_id and stay orphaned forever.
 --
 -- Fix:
+-- 0. (Idempotent) Ensure engagement_received_stats columns exist.
+--    Production DB skipped this earlier migration, so the columns
+--    likes_received / comments_received may be missing.
 -- 1. Replace admin_upsert_engagement_events so each row resolves
 --    user_id from profiles at insert time (left join on lower handle).
 -- 2. Backfill all existing engagement_events where user_id is NULL
@@ -18,6 +21,16 @@
 --    fires credit_engagement_points (which now sees a non-null
 --    user_id) and credits the backlog.
 -- =====================================================
+
+-- 0. Ensure per-post received-stats columns exist (idempotent — from
+-- engagement_received_stats.sql, which never made it to prod).
+alter table public.engagement_events
+  add column if not exists likes_received    integer not null default 0,
+  add column if not exists comments_received integer not null default 0;
+
+create index if not exists idx_engagement_events_likes
+  on public.engagement_events (likes_received)
+  where event_type = 'post';
 
 -- 1. RPC: keep all the dedup logic, but resolve user_id from profiles
 create or replace function public.admin_upsert_engagement_events(p_events jsonb)
