@@ -279,24 +279,35 @@ async function pageFunction(context) {
         return null;
       }
 
+      // Skool's current contribution links use these patterns:
+      //   /<slug>/<postSlug>?p=<8charPostId>...   ← post detail link
+      //   /<slug>/<postSlug>                      ← same target, no ?p=
+      // Skip non-content links: /<slug>/about, /<slug>/-/...,
+      // /<slug>?c=<categoryId>, plain /<slug>?utm_*
+      const slugPrefix = '/' + communitySlug + '/';
+      const all = Array.from(document.querySelectorAll('a[href]'));
       const out = [];
-      const anchors = Array.from(
-        document.querySelectorAll('a[href*="/post/"], a[href*="/comment/"]')
-      );
-      const seen = new Set();
-      for (const a of anchors) {
-        const href = a.href || a.getAttribute('href');
-        if (!href || seen.has(href)) continue;
-        seen.add(href);
+      const seenIds = new Set();
+      for (const a of all) {
+        const href = a.getAttribute('href') || '';
+        if (!href.startsWith(slugPrefix)) continue;
+        // Reject obvious non-content paths
+        if (href.indexOf(slugPrefix + 'about') === 0) continue;
+        if (href.indexOf(slugPrefix + '-/') === 0) continue;
+        if (href.indexOf(slugPrefix + 'classroom') === 0) continue;
 
-        // Type heuristic: explicit /post/ vs /comment/ in path.
-        const isComment = /\\/comment\\//.test(href);
-        const eventType = isComment ? 'comment' : 'post';
+        // Extract a stable post id. Prefer the ?p= query param (8-char
+        // hex), fall back to the post slug after /<slug>/.
+        const pMatch = href.match(/[?&]p=([a-z0-9]{6,})/i);
+        const slugMatch = href.match(new RegExp('^/' + communitySlug + '/([^/?#]+)'));
+        const stableId = (pMatch && pMatch[1]) || (slugMatch && slugMatch[1]) || null;
+        if (!stableId || seenIds.has(stableId)) continue;
+        seenIds.add(stableId);
 
-        // Stable id: trailing slug after /post/ or /comment/, or fall
-        // back to full URL.
-        const idMatch = href.match(/\\/(?:post|comment)\\/([^/?#]+)/);
-        const stableId = idMatch ? idMatch[1] : href;
+        // For now classify everything on this profile page as a post.
+        // Reply detection requires the parent post id which Skool only
+        // exposes by clicking into the card; we leave that for a v2.
+        const eventType = 'post';
         const sourceId = eventType + ':' + stableId;
 
         // Anchor up to the post card so we can read its metadata.
