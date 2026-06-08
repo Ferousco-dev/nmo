@@ -342,10 +342,10 @@ async function pageFunction(context) {
         if (!baseSlug) continue;
 
         // Classify by text pattern:
-        //   POST card: ends with "<likes>\n<commentsCount>\nNew comment Xago"
+        //   POST card: tail is likes-count, comments-count, "New comment"
         //   COMMENT card: contains "N likes • Xtime" inline (the user's
         //     own comment metadata)
-        const commentMatch = text.match(/(\d+)\s*likes?\s*•\s*\d+\s*[smhdw]/i);
+        const commentMatch = text.match(/(\\d+)\\s*likes?\\s*•\\s*\\d+\\s*[smhdw]/i);
         const isComment = !!commentMatch;
         let eventType = isComment ? 'comment' : 'post';
 
@@ -355,9 +355,8 @@ async function pageFunction(context) {
         if (isComment) {
           likesReceived = parseInt(commentMatch[1], 10) || 0;
         } else {
-          // Look for "<likes>\n<comments>\nNew comment" at the end. Also
-          // accept just "<likes>\n<comments>" when post has no replies.
-          const tail = text.match(/\n(\d+)\n(\d+)\n*\s*New comment/);
+          // Look for likes, comments, "New comment" trio at end of card text.
+          const tail = text.match(/\\n(\\d+)\\n(\\d+)\\n*\\s*New comment/);
           if (tail) {
             likesReceived = parseInt(tail[1], 10) || 0;
             commentsReceived = parseInt(tail[2], 10) || 0;
@@ -368,18 +367,14 @@ async function pageFunction(context) {
           }
         }
 
-        // source_id:
-        //   posts → "post:<slug>"
-        //   comments → "comment:<slug>:<hashOfFirst200CharsOfWrapper>"
-        //              (stable across re-scrapes; the wrapper text is
-        //              the comment text + parent post snippet which
-        //              shouldn't change after publication)
+        // source_id strategy: posts use the slug; comments hash the
+        // wrapper text's last line (the comment body) so multiple
+        // comments on the same parent post get distinct stable ids.
         let sourceId;
         if (isComment) {
-          // Take the LAST text line (Skool puts the comment body at the
-          // end of the wrapper for comment cards) so we don't include
-          // the parent post text in the hash.
-          const lines = text.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+          // Take the LAST text line (the comment body) so we don't
+          // include the parent post text in the hash.
+          const lines = text.split('\\n').map(function(l) { return l.trim(); }).filter(Boolean);
           const last = lines[lines.length - 1] || '';
           sourceId = 'comment:' + baseSlug + ':' + fnv1a(last.slice(0, 200));
         } else {
@@ -391,12 +386,11 @@ async function pageFunction(context) {
         // Excerpt: title for posts, comment text for comments
         let excerpt = null;
         if (isComment) {
-          const lines = text.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+          const lines = text.split('\\n').map(function(l) { return l.trim(); }).filter(Boolean);
           excerpt = (lines[lines.length - 1] || '').slice(0, 280);
         } else {
-          // For posts, the title is usually the 6th line (after avatar
-          // level, name, optional status emoji, time, category).
-          const lines = text.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+          // For posts the title appears after the category emoji line.
+          const lines = text.split('\\n').map(function(l) { return l.trim(); }).filter(Boolean);
           // Skip lines that are just numbers (avatar level badge), then
           // skip name + meta. Title is the first multi-word, non-emoji,
           // non-time line we find after the category emoji.
