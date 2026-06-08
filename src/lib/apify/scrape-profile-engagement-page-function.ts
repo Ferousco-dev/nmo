@@ -341,20 +341,48 @@ async function pageFunction(context) {
         const baseSlug = (slugMatch && slugMatch[1]) || null;
         if (!baseSlug) continue;
 
-        // Classify by text pattern:
-        //   POST card: tail is likes-count, comments-count, "New comment"
-        //   COMMENT card: contains "N likes ... time" inline (the user's
-        //     own comment metadata). Bullet variants vary so use a
-        //     looser separator class.
-        const commentMatch = text.match(/(\\d+)\\s+likes?\\s+\\S\\s*\\d+\\s*[smhdw]/i);
-        const isComment = !!commentMatch;
+        // Classify: when the wrapper is the user's COMMENT on someone
+        // else's post, Skool stacks the parent post context above the
+        // user's comment. So the structure is:
+        //   [parent post text]\\n<likes>\\n<comments>\\nNew comment X ago
+        //   \\n[user's level + name + N likes • Xtime + comment body]
+        //
+        // For a POST by the user, the wrapper just ends with the
+        // "New comment X ago" footer (or nothing if no comments yet).
+        // For a COMMENT, "New comment X ago" appears in the MIDDLE,
+        // followed by the user's own comment text.
+        //
+        // Detect by checking whether the LAST line is a comment-body-
+        // shaped line (not "New comment...", not pure numeric).
+        const allLines = text.split('\\n').map(function(l) { return l.trim(); }).filter(Boolean);
+        const lastLine = allLines.length > 0 ? allLines[allLines.length - 1] : '';
+        const lastIsCommentFooter =
+          lastLine.indexOf('New comment') === 0 || /^\\d+$/.test(lastLine);
+        // If text contains "New comment X ago" AND there's more content
+        // after it → it's a wrapper showing a comment by the user.
+        let isComment = false;
+        const newCommentIdx = text.lastIndexOf('New comment');
+        if (newCommentIdx >= 0) {
+          const after = text.slice(newCommentIdx + 'New comment'.length);
+          // After "New comment X ago" Skool shows the user's metadata
+          // and comment body. Length > 50 chars after the footer is a
+          // reliable comment signal.
+          if (after.replace(/\\s+/g, ' ').trim().length > 50) {
+            isComment = true;
+          }
+        }
+        // Also catch single-comment-by-user cases (no parent post tail).
+        const commentLikesPattern = text.match(/(\\d+)\\s+likes?\\s+\\S\\s*\\d+\\s*[smhdw]/i);
+        if (!isComment && commentLikesPattern && !lastIsCommentFooter) {
+          isComment = true;
+        }
         let eventType = isComment ? 'comment' : 'post';
 
         // Counts
         let likesReceived = 0;
         let commentsReceived = 0;
         if (isComment) {
-          likesReceived = parseInt(commentMatch[1], 10) || 0;
+          likesReceived = commentLikesPattern ? (parseInt(commentLikesPattern[1], 10) || 0) : 0;
         } else {
           // Look for likes, comments, "New comment" trio at end of card text.
           const tail = text.match(/\\n(\\d+)\\n(\\d+)\\n*\\s*New comment/);
