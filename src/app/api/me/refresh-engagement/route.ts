@@ -148,7 +148,13 @@ export async function POST() {
   const batchHandles = handles.slice(0, BATCH_SIZE);
 
   const actorInput = {
-    startUrls: [{ url: 'https://www.skool.com/login' }],
+    // Start on a data: URL (loads instantly, no network) so the actor
+    // framework's mandatory navigation never blocks. All real navigation
+    // (login + profile pages) happens INSIDE pageFunction where we can
+    // control timeouts per-step. Previous design used /login as the
+    // startUrl — once Skool's WAF started taking >120s to clear, the
+    // framework gave up before pageFunction even ran.
+    startUrls: [{ url: 'data:text/html,<html><body>warmup</body></html>' }],
     pseudoUrls: [],
     linkSelector: '',
     keepUrlFragments: false,
@@ -156,12 +162,10 @@ export async function POST() {
     proxyConfiguration: { useApifyProxy: true },
     maxRequestsPerCrawl: 1,
     maxConcurrency: 1,
-    // Batch profile scrape: login (~20s) + ~30s per profile + buffer.
-    // For 50 handles that's ~25 min worst case; pageFunctionTimeoutSecs
-    // gives the actor that runway, and the run-level timeoutSecs below
-    // matches.
+    // Batch profile scrape: login (~120s worst-case WAF) + ~30s per
+    // profile + buffer. 50 handles ≈ 30 min cap.
     pageFunctionTimeoutSecs: 1800,
-    pageLoadTimeoutSecs: 120,
+    pageLoadTimeoutSecs: 30,  // data: URL is instant
     maxRequestRetries: 0,
     customData: {
       skoolEmail,

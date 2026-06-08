@@ -32,12 +32,16 @@ async function pageFunction(context) {
 
   // ---- 1. Login -------------------------------------------------
   log.info('Engagement: logging in for ' + handles.length + ' profile(s)');
+  // Skool's WAF JS challenge can take 60-120s before the login page is
+  // interactive. Use a long timeout and 'domcontentloaded' (don't wait
+  // for every network resource). The framework's pageLoadTimeoutSecs
+  // doesn't apply to this in-pageFunction navigation.
   await page.goto('https://www.skool.com/login', {
     waitUntil: 'domcontentloaded',
-    timeout: 45000,
+    timeout: 180000,
   });
   try {
-    await page.waitForSelector('input[name="email"], input[type="email"]', { timeout: 20000 });
+    await page.waitForSelector('input[name="email"], input[type="email"]', { timeout: 60000 });
   } catch (e) {
     return { error: 'login_form_not_found', current_url: page.url() };
   }
