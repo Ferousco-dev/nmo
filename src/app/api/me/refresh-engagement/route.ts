@@ -24,6 +24,12 @@ export const maxDuration = 30;
 const APIFY_ACTOR = 'apify~playwright-scraper';
 const COMMUNITY_SLUG = 'nmo';
 const COOLDOWN_MINUTES = 10;
+// Each user refresh now scrapes a BATCH of community handles, not just
+// the caller. One login refreshes everyone's data; leaderboards stay
+// fresh; the caller's own row is included. Trade-off: more Apify credits
+// per refresh, but on the client's "don't care" request — they want a
+// single click to refresh the world.
+const BATCH_SIZE = 50;
 
 export async function POST() {
   const supabase = createClient();
@@ -114,6 +120,33 @@ export async function POST() {
     );
   }
 
+  // Build the batch: every linked handle (every profile with a
+  // skool_handle), capped at BATCH_SIZE. Always include the caller's
+  // handle, even if more recent users push it past the cap.
+  const supabaseUrl0 = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey0 = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const handles: string[] = [handle];
+  if (supabaseUrl0 && serviceKey0) {
+    const svc0 = createServiceClient(supabaseUrl0, serviceKey0, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: linkedProfiles } = await svc0
+      .from('profiles')
+      .select('skool_handle')
+      .not('skool_handle', 'is', null)
+      .order('updated_at', { ascending: false })
+      .limit(BATCH_SIZE);
+    for (const row of linkedProfiles ?? []) {
+      const h = ((row as { skool_handle: string }).skool_handle ?? '')
+        .trim()
+        .replace(/^@+/, '')
+        .toLowerCase();
+      if (h && !handles.includes(h)) handles.push(h);
+    }
+  }
+  // Final cap so a runaway dataset never blows past Apify wall-clock
+  const batchHandles = handles.slice(0, BATCH_SIZE);
+
   const actorInput = {
     startUrls: [{ url: 'https://www.skool.com/login' }],
     pseudoUrls: [],
@@ -123,11 +156,19 @@ export async function POST() {
     proxyConfiguration: { useApifyProxy: true },
     maxRequestsPerCrawl: 1,
     maxConcurrency: 1,
-    // Single profile: login (~20s) + scrape (~30s) + buffer.
-    pageFunctionTimeoutSecs: 180,
+    // Batch profile scrape: login (~20s) + ~30s per profile + buffer.
+    // For 50 handles that's ~25 min worst case; pageFunctionTimeoutSecs
+    // gives the actor that runway, and the run-level timeoutSecs below
+    // matches.
+    pageFunctionTimeoutSecs: 1800,
     pageLoadTimeoutSecs: 120,
     maxRequestRetries: 0,
-    customData: { skoolEmail, skoolPassword, handles: [handle], communitySlug: COMMUNITY_SLUG },
+    customData: {
+      skoolEmail,
+      skoolPassword,
+      handles: batchHandles,
+      communitySlug: COMMUNITY_SLUG,
+    },
   };
 
   // Helper: mark our reserved slot failed so the cooldown clears and
@@ -155,7 +196,8 @@ export async function POST() {
   try {
     runMeta = await apifyStartRun(APIFY_ACTOR, actorInput, apifyToken!, {
       memoryMbytes: 2048,
-      timeoutSecs: 360,
+      // 50 handles × ~30s + login + slack = ~30 min cap
+      timeoutSecs: 1800,
     });
   } catch (e: unknown) {
     if (e instanceof ApifyError) {
@@ -189,10 +231,13 @@ export async function POST() {
       .update({
         notes: {
           mode: 'engagement_events_apify',
-          batch_size: 1,
+          batch_size: batchHandles.length,
           only_linked: true,
           triggered_by: 'user_self_refresh',
-          explicit_handles: [handle],
+          // Keep caller's handle first so the reserve_engagement_run
+          // cooldown lookup (which reads explicit_handles ->> 0)
+          // still throttles per-caller correctly.
+          explicit_handles: batchHandles,
           apify_run_id: runMeta.id,
         },
       })
