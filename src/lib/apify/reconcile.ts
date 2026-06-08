@@ -96,28 +96,15 @@ export async function reconcilePendingApifyRuns(
     .order('started_at', { ascending: false })
     .limit(20);
 
-  // Mark runs that have been "running" for more than STALL_AFTER_MS as
-  // failed. Without this guard, a row that never gets a terminal Apify
-  // status (Vercel terminated the function mid-poll, network glitch
-  // during status read, etc.) stays running forever and blocks the
-  // 10-min cooldown on /api/me/refresh-engagement for that handle —
-  // user can never trigger another refresh.
-  const STALL_AFTER_MS = 5 * 60_000;
-  const now = Date.now();
-  const stalled = (rows ?? []).filter((r) => {
-    const startedAt = new Date((r as { started_at: string }).started_at).getTime();
-    return Number.isFinite(startedAt) && now - startedAt > STALL_AFTER_MS;
-  });
-  for (const r of stalled) {
-    await supabase
-      .from('bot_runs')
-      .update({
-        status: 'failed',
-        finished_at: new Date().toISOString(),
-        error: `Stalled — running > ${STALL_AFTER_MS / 60_000} min without terminal Apify status`,
-      })
-      .eq('id', (r as { id: string }).id);
-  }
+  // (Stall sweep removed — see git blame on this section. Previously a
+  // blind elapsed-time check marked any row "running" > 5 min as failed
+  // without consulting Apify. That killed legitimate SUCCEEDED runs
+  // whose datasets we hadn't polled yet — e.g., a 48-second Apify run
+  // sat in our DB unprocessed for 18 min, got "stalled" → we threw the
+  // data away. The main loop below now handles every Apify status
+  // authoritatively. The remaining edge case — a row whose Apify run
+  // id can't be reached at all — is handled inside the main loop where
+  // we have the actual error.)
 
   const candidates = (rows ?? [])
     .filter((r): r is BotRunsRow => {
