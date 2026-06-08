@@ -306,72 +306,126 @@ async function pageFunction(context) {
         return null;
       }
 
-      // Skool's current contribution links use these patterns:
-      //   /<slug>/<postSlug>?p=<8charPostId>...   ← post detail link
-      //   /<slug>/<postSlug>                      ← same target, no ?p=
-      // Skip non-content links: /<slug>/about, /<slug>/-/...,
-      // /<slug>?c=<categoryId>, plain /<slug>?utm_*
-      const slugPrefix = '/' + communitySlug + '/';
-      const all = Array.from(document.querySelectorAll('a[href]'));
+      // Tiny stable hash (FNV-1a 32-bit) for generating unique source_ids
+      // for comments/replies where the parent slug is shared.
+      function fnv1a(s) {
+        let h = 0x811c9dc5;
+        for (let i = 0; i < s.length; i++) {
+          h ^= s.charCodeAt(i);
+          h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+        }
+        return h.toString(16);
+      }
+
+      // Walk Skool's contribution wrappers — each one is a single
+      // post or comment by the profile user. Class includes
+      // "PostItemContent" reliably.
+      const wrappers = Array.from(
+        document.querySelectorAll('[class*="PostItemContent"]')
+      );
       const out = [];
       const seenIds = new Set();
-      for (const a of all) {
-        const href = a.getAttribute('href') || '';
-        if (!href.startsWith(slugPrefix)) continue;
-        // Reject obvious non-content paths
-        if (href.indexOf(slugPrefix + 'about') === 0) continue;
-        if (href.indexOf(slugPrefix + '-/') === 0) continue;
-        if (href.indexOf(slugPrefix + 'classroom') === 0) continue;
 
-        // Extract a stable post id. Prefer the slug after /<community>/
-        // because every link to the post (with or without ?p=) shares
-        // the same slug. Using ?p= first would double-count (slug-only
-        // link vs ?p= link → different ids → both counted).
+      const slugPrefix = '/' + communitySlug + '/';
+
+      for (const wrapper of wrappers) {
+        const text = (wrapper.innerText || '').trim();
+        if (!text) continue;
+
+        // Find the FIRST anchor inside this wrapper that points to the
+        // community content — gives us the parent post slug.
+        const anchor = wrapper.querySelector('a[href^="' + slugPrefix + '"]');
+        const href = anchor ? anchor.getAttribute('href') : '';
+
         const slugMatch = href.match(new RegExp('^/' + communitySlug + '/([^/?#]+)'));
-        const pMatch = href.match(/[?&]p=([a-z0-9]{6,})/i);
-        const stableId = (slugMatch && slugMatch[1]) || (pMatch && pMatch[1]) || null;
-        if (!stableId || seenIds.has(stableId)) continue;
-        seenIds.add(stableId);
+        const baseSlug = (slugMatch && slugMatch[1]) || null;
+        if (!baseSlug) continue;
 
-        // For now classify everything on this profile page as a post.
-        // Reply detection requires the parent post id which Skool only
-        // exposes by clicking into the card; we leave that for a v2.
-        const eventType = 'post';
-        const sourceId = eventType + ':' + stableId;
+        // Classify by text pattern:
+        //   POST card: ends with "<likes>\n<commentsCount>\nNew comment Xago"
+        //   COMMENT card: contains "N likes • Xtime" inline (the user's
+        //     own comment metadata)
+        const commentMatch = text.match(/(\d+)\s*likes?\s*•\s*\d+\s*[smhdw]/i);
+        const isComment = !!commentMatch;
+        let eventType = isComment ? 'comment' : 'post';
 
-        // Anchor up to the post card so we can read its metadata.
-        const card = a.closest('article, [class*="card"], [class*="post"], li, [role="listitem"]');
-
-        let excerpt = null;
-        if (card) {
-          const t = card.querySelector('h1, h2, h3, [class*="title"]');
-          if (t && t.textContent) excerpt = t.textContent.trim().slice(0, 280);
-          if (!excerpt) {
-            const body = card.querySelector('p, [class*="excerpt"], [class*="body"]');
-            if (body && body.textContent) excerpt = body.textContent.trim().slice(0, 280);
+        // Counts
+        let likesReceived = 0;
+        let commentsReceived = 0;
+        if (isComment) {
+          likesReceived = parseInt(commentMatch[1], 10) || 0;
+        } else {
+          // Look for "<likes>\n<comments>\nNew comment" at the end. Also
+          // accept just "<likes>\n<comments>" when post has no replies.
+          const tail = text.match(/\n(\d+)\n(\d+)\n*\s*New comment/);
+          if (tail) {
+            likesReceived = parseInt(tail[1], 10) || 0;
+            commentsReceived = parseInt(tail[2], 10) || 0;
+          } else {
+            // Fallback to old findCountByHints in the wrapper
+            likesReceived = findCountByHints(wrapper, ['like', 'thank', 'heart']) || 0;
+            commentsReceived = findCountByHints(wrapper, ['comment', 'reply']) || 0;
           }
         }
 
-        // Like + comment counts. Only meaningful for top-level posts;
-        // for comments leave them 0 (Skool shows reply counts inline
-        // and we can capture them as reply events instead).
-        let likesReceived = 0;
-        let commentsReceived = 0;
-        if (eventType === 'post' && card) {
-          likesReceived = findCountByHints(card, ['like', 'thank', 'heart']) || 0;
-          commentsReceived = findCountByHints(card, ['comment', 'reply']) || 0;
+        // source_id:
+        //   posts → "post:<slug>"
+        //   comments → "comment:<slug>:<hashOfFirst200CharsOfWrapper>"
+        //              (stable across re-scrapes; the wrapper text is
+        //              the comment text + parent post snippet which
+        //              shouldn't change after publication)
+        let sourceId;
+        if (isComment) {
+          // Take the LAST text line (Skool puts the comment body at the
+          // end of the wrapper for comment cards) so we don't include
+          // the parent post text in the hash.
+          const lines = text.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+          const last = lines[lines.length - 1] || '';
+          sourceId = 'comment:' + baseSlug + ':' + fnv1a(last.slice(0, 200));
+        } else {
+          sourceId = 'post:' + baseSlug;
+        }
+        if (seenIds.has(sourceId)) continue;
+        seenIds.add(sourceId);
+
+        // Excerpt: title for posts, comment text for comments
+        let excerpt = null;
+        if (isComment) {
+          const lines = text.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+          excerpt = (lines[lines.length - 1] || '').slice(0, 280);
+        } else {
+          // For posts, the title is usually the 6th line (after avatar
+          // level, name, optional status emoji, time, category).
+          const lines = text.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+          // Skip lines that are just numbers (avatar level badge), then
+          // skip name + meta. Title is the first multi-word, non-emoji,
+          // non-time line we find after the category emoji.
+          let foundCategory = false;
+          for (const line of lines) {
+            if (line.indexOf('💬') === 0 || line.indexOf('🏃') === 0 ||
+                line.indexOf('👋') === 0 || line.indexOf('💪') === 0 ||
+                line.indexOf('👑') === 0 || line.indexOf('📖') === 0) {
+              foundCategory = true;
+              continue;
+            }
+            if (foundCategory && line.length >= 2 && !/^[0-9]+$/.test(line)) {
+              excerpt = line.slice(0, 280);
+              break;
+            }
+          }
         }
 
         out.push({
           event_type: eventType,
           source_id: sourceId,
           target_post_url: href.startsWith('http') ? href : ('https://www.skool.com' + href),
-          target_post_id: stableId,
+          target_post_id: baseSlug,
           content_excerpt: excerpt,
           likes_received: likesReceived,
           comments_received: commentsReceived,
         });
       }
+
       return out;
     }, { communitySlug });
 
