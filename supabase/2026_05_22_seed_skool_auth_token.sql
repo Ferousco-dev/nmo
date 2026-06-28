@@ -20,7 +20,7 @@
 -- =====================================================
 
 insert into public.app_settings (key, value, updated_by, updated_at)
-values ('skool_auth_token', 'YOUR_JWT_HERE', null, now())
+values ('skool_auth_token', 'JWT', null, now())
 on conflict (key) do update set
   value      = excluded.value,
   updated_at = now();

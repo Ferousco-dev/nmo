@@ -109,8 +109,8 @@ export default async function RoadmapDayPage({
   const title = isZh ? meta.title.zh : meta.title.en;
   const subtitle = isZh ? meta.subtitle.zh : meta.subtitle.en;
   const nonNegotiable = isZh ? meta.nonNegotiable.zh : meta.nonNegotiable.en;
-  const wisdomQuote = isZh ? meta.wisdom.quote.zh : meta.wisdom.quote.en;
-  const wisdomSource = meta.wisdom.source ? (isZh ? meta.wisdom.source.zh : meta.wisdom.source.en) : null;
+  // Per client (Jack) — wisdom quote removed because it wasn't always
+  // relevant to what the member was going through that day.
 
   const hasPrev = dayNum > 1;
   const hasNext = dayNum < TOTAL_DAYS;
@@ -175,22 +175,6 @@ export default async function RoadmapDayPage({
           ) : (
             <DayDetailClient tasks={tasks} />
           )}
-        </div>
-
-        {/* Wisdom */}
-        <div className="card-premium border-warn/30 bg-gradient-to-br from-warn/10 to-transparent p-4 sm:p-6 mb-6 sm:mb-8">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-warn font-semibold">
-              {t.roadmap.wisdom}
-            </span>
-          </div>
-          <p className="font-display italic text-base sm:text-xl leading-snug text-ink mb-2">
-            &ldquo;{wisdomQuote}&rdquo;
-          </p>
-          <p className="text-xs text-ink-dim">
-            — {meta.wisdom.author}
-            {wisdomSource && <span className="text-ink-faint"> · {wisdomSource}</span>}
-          </p>
         </div>
 
         {/* Day navigation footer */}

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ChevronLeft, Trophy, Activity, Flame, ExternalLink } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { GrantPointsForm, GrantBadgeForm, RevokeBadgeButton } from '@/components/admin/MemberActions';
+import { MemberRegionPicker } from '@/components/admin/MemberRegionPicker';
 import { getT } from '@/lib/i18n/server';
 import { currentTier } from '@/lib/badges';
 import type { Badge } from '@/types';
@@ -19,6 +20,12 @@ interface MemberRow {
   total_points: number;
   streak_count: number;
   current_level: number;
+  region_id: string | null;
+}
+
+interface RegionRow {
+  id: string;
+  name: string;
 }
 
 export default async function AdminMemberDetailPage({
@@ -29,10 +36,15 @@ export default async function AdminMemberDetailPage({
   const t = getT();
   const supabase = createClient();
 
-  const [{ data: member }, { data: catalog }, { data: held }] = await Promise.all([
+  const [
+    { data: member },
+    { data: catalog },
+    { data: held },
+    { data: regions },
+  ] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, email, display_name, skool_handle, skool_avatar_url, skool_display_name, total_points, streak_count, current_level')
+      .select('id, email, display_name, skool_handle, skool_avatar_url, skool_display_name, total_points, streak_count, current_level, region_id')
       .eq('id', params.id)
       .maybeSingle(),
     supabase
@@ -44,7 +56,12 @@ export default async function AdminMemberDetailPage({
       .from('user_badges')
       .select('badge_id')
       .eq('user_id', params.id),
+    supabase
+      .from('regions')
+      .select('id, name')
+      .order('display_order', { ascending: true }),
   ]);
+  const regionOptions = (regions ?? []) as RegionRow[];
 
   if (!member) notFound();
   const m = member as MemberRow;
@@ -109,6 +126,25 @@ export default async function AdminMemberDetailPage({
             <Stat icon={<Trophy className="h-3.5 w-3.5" />} label="pts" value={m.total_points.toLocaleString()} />
             <Stat icon={<Activity className="h-3.5 w-3.5" />} label="tier" value={`Lv ${tier}`} />
             <Stat icon={<Flame className="h-3.5 w-3.5" />} label="streak" value={`${m.streak_count}d`} />
+          </div>
+
+          <Link
+            href={`/admin/members/${m.id}/roadmap`}
+            className="mt-4 inline-flex items-center justify-center gap-1.5 px-3 h-9 rounded-md text-xs font-medium border border-accent/30 text-accent hover:bg-accent/10 transition-colors w-full sm:w-auto"
+          >
+            Edit this member&apos;s 30-day roadmap →
+          </Link>
+
+          {/* Region picker */}
+          <div className="mt-4 pt-4 border-t border-line">
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-muted mb-2">
+              Region
+            </p>
+            <MemberRegionPicker
+              userId={m.id}
+              initialRegionId={m.region_id}
+              regions={regionOptions}
+            />
           </div>
         </div>
 
