@@ -95,16 +95,34 @@ export async function POST() {
   }
   const reservedRunId = reserved.bot_run_id as string;
 
-  // Pull integration credentials. These live in app_settings (set in
-  // /admin → Integrations) — same source the admin trigger uses.
-  const [tokenRes, emailRes, pwRes] = await Promise.all([
-    supabase.rpc('admin_get_setting', { p_key: 'apify_token' }),
-    supabase.rpc('admin_get_setting', { p_key: 'skool_email' }),
-    supabase.rpc('admin_get_setting', { p_key: 'skool_password' }),
-  ]);
-  const apifyToken = (tokenRes.data as string | null) ?? null;
-  const skoolEmail = (emailRes.data as string | null) ?? null;
-  const skoolPassword = (pwRes.data as string | null) ?? null;
+  // Pull integration credentials from app_settings. We can't use the
+  // user's session client + admin_get_setting RPC here — that's gated
+  // by is_admin(), but ANY signed-in member should be able to refresh
+  // their own activity. Read with the service-role client instead
+  // (never exposed to the browser; this is a server-side route).
+  const credsUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const credsKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  let apifyToken: string | null = null;
+  let skoolEmail: string | null = null;
+  let skoolPassword: string | null = null;
+  if (credsUrl && credsKey) {
+    const svc = createServiceClient(credsUrl, credsKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: rows } = await svc
+      .from('app_settings')
+      .select('key, value')
+      .in('key', ['apify_token', 'skool_email', 'skool_password']);
+    for (const r of rows ?? []) {
+      const row = r as { key: string; value: string };
+      if (row.key === 'apify_token') apifyToken = row.value;
+      else if (row.key === 'skool_email') skoolEmail = row.value;
+      else if (row.key === 'skool_password') skoolPassword = row.value;
+    }
+  }
+  // Allow env-var fallback for APIFY_TOKEN (matches the cron route).
+  if (!apifyToken) apifyToken = process.env.APIFY_TOKEN ?? null;
+
   const missing: string[] = [];
   if (!apifyToken) missing.push('apify_token');
   if (!skoolEmail) missing.push('skool_email');

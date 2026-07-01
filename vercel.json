@@ -1,10 +1,4 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/scrape-engagement",
-      "schedule": "0 0 * * *"
-    }
-  ],
   "functions": {
     "src/app/api/admin/bot/status/route.ts": { "maxDuration": 60 },
     "src/app/api/admin/bot/trigger-members-apify/route.ts": { "maxDuration": 30 },

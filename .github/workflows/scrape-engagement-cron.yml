@@ -1,0 +1,55 @@
+name: Skool engagement sync (every 15 min)
+
+# External cron replacement for Vercel Cron. Vercel Hobby only allows
+# daily crons — this workflow hits our Vercel-hosted endpoint every
+# 15 minutes so any Skool post shows up on the dashboard within 15-60
+# minutes of being made.
+#
+# Endpoint auth: Authorization: Bearer ${{ secrets.CRON_SECRET }}
+# The secret must match Vercel's CRON_SECRET env var exactly.
+#
+# GitHub Actions free tier: 2000 minutes/month on private repos, unlimited on public.
+# 15-min schedule × ~15s per job = ~3 min/day = ~90 min/month — safely inside free tier.
+
+on:
+  schedule:
+    # */15 * * * * → every 15 minutes UTC
+    - cron: "*/15 * * * *"
+  # Also allow manual runs from the Actions tab for testing
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Ping cron endpoint
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::APP_URL or CRON_SECRET secret not set. Add them in Repo Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+          # GET request — the route accepts GET and returns quickly (~1-3s).
+          # Long-running work (Apify scrape) is kicked off async and reconciled
+          # by the same endpoint on the next tick, so we don't need to wait.
+          echo "Pinging ${APP_URL}/api/cron/scrape-engagement"
+
+          response=$(curl -sS -w "\n%{http_code}" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL}/api/cron/scrape-engagement")
+
+          body=$(echo "$response" | sed '$d')
+          status=$(echo "$response" | tail -n1)
+
+          echo "Status: $status"
+          echo "Body: $body"
+
+          if [ "$status" != "200" ]; then
+            echo "::error::Non-200 response from cron endpoint"
+            exit 1
+          fi

@@ -1,17 +1,17 @@
-// Vercel Cron: the once-a-day workhorse on Hobby plan.
+// External cron: every 15 min via GitHub Actions
+// (.github/workflows/scrape-engagement-cron.yml).
 //
-// Vercel Hobby caps crons to a single daily fire, so this route does
-// BOTH jobs in one shot:
-//   1. Reconcile any in-flight Apify runs from yesterday — finalises
-//      bot_runs rows, ingests datasets into engagement_events
-//   2. Kick off today's batch of per-profile engagement scrapes
+// Why not Vercel Cron? Hobby only allows daily. Rather than pay $20/mo
+// for Pro, we ping this endpoint from GitHub Actions on a `*/15 * * * *`
+// schedule — free tier is fine for our volume.
 //
-// Mirrors /api/admin/bot/trigger-engagement-apify but auth'd via
-// CRON_SECRET and using a service-role client (no user session).
-// Configurable batch + skip-recent via env vars.
+// This route does BOTH jobs each tick:
+//   1. Reconcile any in-flight Apify runs — finalises bot_runs rows,
+//      ingests datasets into engagement_events
+//   2. Kick off a fresh batch of per-profile engagement scrapes
 //
-// vercel.json schedules this daily at midnight UTC (8am Asia/Taipei).
-// Upgrade to Vercel Pro if you want a higher cadence.
+// Auth: `Authorization: Bearer ${CRON_SECRET}` header. Configurable
+// batch + skip-recent via env vars.
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -49,7 +49,11 @@ export async function GET(req: Request) {
   }
 
   const batch = parseInt(process.env.CRON_ENGAGEMENT_BATCH ?? '50', 10) || 50;
-  const skipRecentHours = parseInt(process.env.CRON_ENGAGEMENT_SKIP_HOURS ?? '24', 10) || 24;
+  // Runs every 15 min in prod (vercel.json). Each handle can be
+  // refreshed at most once per hour so a user's post is visible on the
+  // dashboard within ~1h worst-case. Set CRON_ENGAGEMENT_SKIP_HOURS
+  // higher to save Apify credits, or lower for fresher data.
+  const skipRecentHours = parseInt(process.env.CRON_ENGAGEMENT_SKIP_HOURS ?? '1', 10) || 1;
 
   const supabase = createClient(supabaseUrl!, serviceKey!, {
     auth: { persistSession: false, autoRefreshToken: false },
